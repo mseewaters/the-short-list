@@ -1,4 +1,5 @@
 from langgraph.graph import StateGraph
+from langgraph.graph import END
 
 from app.state import shortlistState
 
@@ -20,5 +21,7 @@ graph.add_edge("intent", "requirements")
 graph.add_edge("requirements", "response")
 
 graph.set_entry_point("intent")
+
+graph.add_edge("response", END)
 
 compiled_graph = graph.compile()

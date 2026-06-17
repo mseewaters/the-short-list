@@ -12,3 +12,5 @@ class shortlistState(TypedDict):
     agent_message: str
 
     ready_to_search: bool
+
+    activity_events: list[dict]
