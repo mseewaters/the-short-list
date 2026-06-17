@@ -8,13 +8,21 @@ const input = ref(
   "I need a ceiling fan for an old house bedroom. I care about quiet, low profile, and not ugly.",
 );
 const messages = ref([]);
-const searchIntent = ref(null);
-const agentTrace = ref([]);
+const clarifyResult = ref(null);
+const searchResult = ref(null);
+const stage = ref("understand");
 const loading = ref(false);
+const searchLoading = ref(false);
 const error = ref("");
 
-const requirements = computed(() => searchIntent.value?.requirements || []);
-const missingInformation = computed(() => searchIntent.value?.missing_information || []);
+const requirements = computed(() => clarifyResult.value?.requirements || []);
+const missingFields = computed(() => clarifyResult.value?.missing_fields || []);
+const agentTrace = computed(() => clarifyResult.value?.agent_trace || []);
+const stages = [
+  { key: "understand", label: "Understand" },
+  { key: "research", label: "Research" },
+  { key: "results", label: "Your Short List" },
+];
 
 async function apiFetch(path, options = {}) {
   const response = await fetch(`${apiBaseUrl}${path}`, {
@@ -42,6 +50,15 @@ async function createSession() {
   sessionId.value = session.session_id;
 }
 
+async function resetSession() {
+  messages.value = [];
+  clarifyResult.value = null;
+  searchResult.value = null;
+  stage.value = "understand";
+  input.value = "";
+  await createSession();
+}
+
 async function sendMessage() {
   const message = input.value.trim();
   if (!message || !sessionId.value || loading.value) {
@@ -63,14 +80,39 @@ async function sendMessage() {
       }),
     });
 
-    searchIntent.value = result.search_intent;
-    agentTrace.value = result.activity_events || [];
+    clarifyResult.value = result;
+    searchResult.value = null;
     messages.value.push({ role: "agent", text: result.agent_message });
   } catch (err) {
     error.value = "I had trouble updating the requirements. Please try again.";
     input.value = message;
   } finally {
     loading.value = false;
+  }
+}
+
+async function searchNow() {
+  if (!sessionId.value || searchLoading.value) {
+    return;
+  }
+
+  searchLoading.value = true;
+  error.value = "";
+
+  try {
+    stage.value = "research";
+    searchResult.value = await apiFetch("/search", {
+      method: "POST",
+      body: JSON.stringify({
+        session_id: sessionId.value,
+      }),
+    });
+    stage.value = "results";
+  } catch (err) {
+    stage.value = "understand";
+    error.value = "I had trouble running the mock search. Please try again.";
+  } finally {
+    searchLoading.value = false;
   }
 }
 
@@ -86,13 +128,18 @@ onMounted(async () => {
 <template>
   <main class="app-shell">
     <section class="stage-bar" aria-label="Workflow stage">
-      <span class="stage active">Understand</span>
-      <span class="stage">Confirm</span>
-      <span class="stage">Research</span>
-      <span class="stage">Results</span>
+      <span
+        v-for="item in stages"
+        :key="item.key"
+        class="stage"
+        :class="{ active: stage === item.key }"
+      >
+        {{ item.label }}
+      </span>
+      <button type="button" @click="resetSession">Reset session</button>
     </section>
 
-    <section class="workspace">
+    <section v-if="stage === 'understand'" class="workspace">
       <div class="conversation-panel">
         <header>
           <p class="eyebrow">The Short List</p>
@@ -127,6 +174,16 @@ onMounted(async () => {
         </form>
 
         <p v-if="error" class="error">{{ error }}</p>
+
+        <button
+          v-if="clarifyResult?.ready_to_search"
+          type="button"
+          :disabled="searchLoading"
+          @click="searchNow"
+        >
+          {{ searchLoading ? "Searching..." : "Looks right — search now" }}
+        </button>
+
       </div>
 
       <div class="side-column">
@@ -136,38 +193,82 @@ onMounted(async () => {
             <strong>{{ requirements.length }}</strong>
           </div>
 
-          <p v-if="searchIntent?.category_label" class="category">
-            Category: {{ searchIntent.category_label }}
-          </p>
+          <section>
+            <h2>Category</h2>
+            <p v-if="clarifyResult?.category" class="category">{{ clarifyResult.category }}</p>
+            <p v-else class="empty-message">No category yet.</p>
+          </section>
 
-          <div v-if="requirements.length" class="requirements-list">
-            <article v-for="requirement in requirements" :key="requirement.id" class="requirement">
-              <h2>{{ requirement.label }}</h2>
-              <p>{{ requirement.interpreted_need }}</p>
-            </article>
-          </div>
+          <section>
+            <h2>Requirements</h2>
+            <div v-if="requirements.length" class="requirements-list">
+              <article
+                v-for="requirement in requirements"
+                :key="`${requirement.label}-${requirement.value}`"
+                class="requirement"
+              >
+                <h3>{{ requirement.label }}</h3>
+                <p>{{ requirement.value }}</p>
+              </article>
+            </div>
+            <p v-else class="empty-message">No requirements yet.</p>
+          </section>
 
-          <p v-else class="empty-message">Requirements will appear here after you send a message.</p>
-
-          <div v-if="missingInformation.length" class="missing-info">
-            <h2>Still Needed</h2>
-            <p v-for="item in missingInformation" :key="item.field">{{ item.question }}</p>
-          </div>
+          <section>
+            <h2>Missing Information</h2>
+            <div v-if="missingFields.length" class="missing-info">
+              <p v-for="field in missingFields" :key="field">{{ field }}</p>
+            </div>
+            <p v-else class="empty-message">No missing information.</p>
+          </section>
         </aside>
 
-        <aside class="agent-trace-panel" aria-label="Agent trace">
+        <aside class="requirements-panel" aria-label="Agent trace">
           <p class="eyebrow">Agent Trace</p>
-
-          <div v-if="agentTrace.length" class="trace-list">
-            <article v-for="event in agentTrace" :key="event.node" class="trace-item">
-              <h2>{{ event.label }}</h2>
-              <p>{{ event.detail }}</p>
-            </article>
+          <div v-if="agentTrace.length">
+            <p v-for="trace in agentTrace" :key="trace">{{ trace }}</p>
           </div>
-
-          <p v-else class="empty-message">Trace output will appear after /clarify runs.</p>
+          <p v-else class="empty-message">No trace yet.</p>
         </aside>
       </div>
+    </section>
+
+    <section v-else-if="stage === 'research'" class="report-layout">
+      <section class="requirements-panel">
+        <p class="eyebrow">Research</p>
+        <h1>Mock search is running.</h1>
+        <p>Using the current requirements to score hardcoded ceiling fan candidates.</p>
+
+        <h2>Agent Trace</h2>
+        <p v-for="trace in agentTrace" :key="trace">{{ trace }}</p>
+      </section>
+    </section>
+
+    <section v-else class="report-layout">
+      <section class="requirements-panel recommendation-panel">
+        <p class="eyebrow">Recommendation</p>
+        <h1>Here is what I recommend and why.</h1>
+        <p>{{ searchResult.recommendation }}</p>
+      </section>
+
+      <section class="results-panel">
+        <h2>Your Short List</h2>
+        <article
+          v-for="candidate in searchResult.candidates"
+          :key="candidate.id"
+          class="requirements-panel product-card"
+        >
+          <h3>{{ candidate.name }}</h3>
+          <p>{{ candidate.price }} · Score: {{ candidate.score }} · {{ candidate.verdict }}</p>
+
+          <div>
+            <p v-for="criterion in candidate.criteria" :key="criterion.label">
+              {{ criterion.met ? "Met" : "Not met" }} — {{ criterion.label }}:
+              {{ criterion.note }}
+            </p>
+          </div>
+        </article>
+      </section>
     </section>
   </main>
 </template>

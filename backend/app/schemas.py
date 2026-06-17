@@ -19,9 +19,40 @@ class ClarifyRequest(BaseModel):
     message: str
 
 
+class Requirement(BaseModel):
+    label: str
+    value: str
+
+
 class ClarifyResponse(BaseModel):
-    status: str = "ok"
+    category: str | None
+    requirements: list[Requirement] = Field(default_factory=list)
+    missing_fields: list[str] = Field(default_factory=list)
+    agent_trace: list[str] = Field(default_factory=list)
     agent_message: str
-    search_intent: dict
     ready_to_search: bool
-    activity_events: list[dict] = Field(default_factory=list)
+
+
+class SearchRequest(BaseModel):
+    session_id: str
+
+
+class CriterionResult(BaseModel):
+    label: str
+    met: bool
+    note: str
+
+
+class ProductCandidate(BaseModel):
+    id: str
+    name: str
+    price: str
+    score: int
+    verdict: str
+    criteria: list[CriterionResult] = Field(default_factory=list)
+
+
+class SearchResponse(BaseModel):
+    status: str
+    candidates: list[ProductCandidate] = Field(default_factory=list)
+    recommendation: str

@@ -13,4 +13,4 @@ class shortlistState(TypedDict):
 
     ready_to_search: bool
 
-    activity_events: list[dict]
+    agent_trace: list[str]

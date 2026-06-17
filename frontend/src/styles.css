@@ -64,8 +64,7 @@ textarea:focus-visible {
 }
 
 .conversation-panel,
-.requirements-panel,
-.agent-trace-panel {
+.requirements-panel {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -187,36 +186,45 @@ button:disabled {
   gap: 12px;
 }
 
-.requirement,
-.trace-item {
+.requirement {
   border-top: 1px solid var(--border);
   padding-top: 12px;
 }
 
 .requirement h2,
-.missing-info h2,
-.trace-item h2 {
+.missing-info h2 {
   margin: 0 0 6px;
   font-size: 18px;
 }
 
 .requirement p,
-.missing-info p,
-.trace-item p {
+.missing-info p {
   margin: 0;
   color: var(--ink-mid);
   line-height: 1.45;
-}
-
-.trace-list {
-  display: grid;
-  gap: 12px;
 }
 
 .missing-info {
   margin-top: 22px;
   border-top: 1px solid var(--border);
   padding-top: 16px;
+}
+
+.results-panel {
+  margin-top: 24px;
+}
+
+.report-layout {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.recommendation-panel {
+  margin-bottom: 24px;
+}
+
+.product-card {
+  margin-bottom: 16px;
 }
 
 @media (max-width: 780px) {
