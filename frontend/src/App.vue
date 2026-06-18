@@ -1,24 +1,41 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 const sessionId = ref(null);
 const input = ref(
-  "I need a ceiling fan for an old house bedroom. I care about quiet, low profile, and not ugly.",
+  "Describe the product you are looking for in plain language, including any needs, constraints, preferences, or answers to intake questions. For example: 'I need a ceiling fan for my living room. I have a budget of $200, the ceiling is 8 feet high, and I want something quiet with a modern look.'",
 );
 const messages = ref([]);
 const clarifyResult = ref(null);
 const searchResult = ref(null);
-const stage = ref("understand");
+const stage = ref("category");
+const categoryInput = ref("");
+const categoryProposal = ref(null);
+const calibratedCategory = ref("");
+const selectedCategory = ref("");
 const loading = ref(false);
 const searchLoading = ref(false);
+const intelligenceLoading = ref(false);
+const categoryExtractLoading = ref(false);
+const categoryIntelligence = ref(null);
+const llmConfig = ref(null);
 const error = ref("");
 
 const requirements = computed(() => clarifyResult.value?.requirements || []);
 const missingFields = computed(() => clarifyResult.value?.missing_fields || []);
 const agentTrace = computed(() => clarifyResult.value?.agent_trace || []);
+const rawIntelligence = computed(() => categoryIntelligence.value?.raw_intelligence || null);
+const normalizedIntelligence = computed(() => categoryIntelligence.value?.normalized_intelligence || null);
+const visibleKeyDecisionFactors = computed(() => rawIntelligence.value?.key_decision_factors?.slice(0, 8) || []);
+const visibleEntityCandidates = computed(() => normalizedIntelligence.value?.entity_candidates?.slice(0, 8) || []);
+const visibleAttributeSchema = computed(() => normalizedIntelligence.value?.attribute_schema?.slice(0, 10) || []);
+const visibleDecisionAxes = computed(() => normalizedIntelligence.value?.decision_axes?.slice(0, 6) || []);
+const visibleRisks = computed(() => rawIntelligence.value?.risks_or_gotchas?.slice(0, 5) || []);
+const visibleIntakeQuestions = computed(() => normalizedIntelligence.value?.intake_questions?.slice(0, 6) || []);
 const stages = [
+  { key: "category", label: "Category" },
   { key: "understand", label: "Understand" },
   { key: "research", label: "Research" },
   { key: "results", label: "Your Short List" },
@@ -34,7 +51,11 @@ async function apiFetch(path, options = {}) {
   });
 
   if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
+    const detail = await response.text();
+    const error = new Error(`Request failed: ${response.status} ${detail}`);
+    error.status = response.status;
+    error.detail = detail;
+    throw error;
   }
 
   return response.json();
@@ -54,9 +75,21 @@ async function resetSession() {
   messages.value = [];
   clarifyResult.value = null;
   searchResult.value = null;
-  stage.value = "understand";
+  categoryIntelligence.value = null;
+  categoryProposal.value = null;
+  calibratedCategory.value = "";
+  selectedCategory.value = "";
+  categoryInput.value = "";
+  stage.value = "category";
   input.value = "";
   await createSession();
+}
+
+function clearDownstreamState() {
+  messages.value = [];
+  clarifyResult.value = null;
+  searchResult.value = null;
+  input.value = "";
 }
 
 async function sendMessage() {
@@ -71,28 +104,42 @@ async function sendMessage() {
   input.value = "";
 
   try {
-    const result = await apiFetch("/clarify", {
-      method: "POST",
-      body: JSON.stringify({
-        session_id: sessionId.value,
-        user_id: "default",
-        message,
-      }),
-    });
-
+    const result = await submitClarify(message);
     clarifyResult.value = result;
     searchResult.value = null;
     messages.value.push({ role: "agent", text: result.agent_message });
   } catch (err) {
-    error.value = "I had trouble updating the requirements. Please try again.";
+    error.value = `I had trouble updating the requirements. ${err.message}`;
     input.value = message;
   } finally {
     loading.value = false;
   }
 }
 
+async function submitClarify(message, retried = false) {
+  try {
+    return await apiFetch("/clarify", {
+      method: "POST",
+      body: JSON.stringify({
+        session_id: sessionId.value,
+        user_id: "default",
+        message,
+        category: selectedCategory.value,
+        category_context: normalizedIntelligence.value,
+      }),
+    });
+  } catch (err) {
+    if (!retried && err.status === 404 && err.detail.includes("Session not found")) {
+      await createSession();
+      return submitClarify(message, true);
+    }
+
+    throw err;
+  }
+}
+
 async function searchNow() {
-  if (!sessionId.value || searchLoading.value) {
+  if (!sessionId.value || searchLoading.value || !categoryIntelligence.value) {
     return;
   }
 
@@ -116,9 +163,104 @@ async function searchNow() {
   }
 }
 
+async function loadCategoryIntelligence() {
+  const category = calibratedCategory.value || categoryProposal.value?.proposed_category;
+  if (!category || intelligenceLoading.value) {
+    return;
+  }
+
+  intelligenceLoading.value = true;
+  error.value = "";
+  clearDownstreamState();
+  selectedCategory.value = category;
+
+  try {
+    categoryIntelligence.value = await apiFetch("/api/category-intelligence", {
+      method: "POST",
+      body: JSON.stringify({
+        category,
+        context: "",
+      }),
+    });
+    stage.value = "understand";
+  } catch (err) {
+    error.value = "I had trouble loading category intelligence.";
+  } finally {
+    intelligenceLoading.value = false;
+  }
+}
+
+async function extractCategory() {
+  const userInput = categoryInput.value.trim();
+  if (!userInput || categoryExtractLoading.value) {
+    return;
+  }
+
+  categoryExtractLoading.value = true;
+  error.value = "";
+  categoryProposal.value = null;
+  categoryIntelligence.value = null;
+  selectedCategory.value = "";
+  clearDownstreamState();
+
+  try {
+    categoryProposal.value = await apiFetch("/api/category-extract", {
+      method: "POST",
+      body: JSON.stringify({
+        user_input: userInput,
+        additional_context: null,
+      }),
+    });
+    calibratedCategory.value = categoryProposal.value.proposed_category;
+  } catch (err) {
+    error.value = "I had trouble extracting the category.";
+  } finally {
+    categoryExtractLoading.value = false;
+  }
+}
+
+function changeCategoryInput() {
+  categoryProposal.value = null;
+  calibratedCategory.value = "";
+}
+
+async function loadLlmConfig() {
+  try {
+    llmConfig.value = await apiFetch("/api/llm-config");
+  } catch (err) {
+    llmConfig.value = {
+      provider: "unknown",
+      model: "unknown",
+    };
+  }
+}
+
+function canOpenStage(stageKey) {
+  if (stageKey === "category") {
+    return true;
+  }
+  if (stageKey === "understand") {
+    return Boolean(categoryIntelligence.value);
+  }
+  if (stageKey === "research") {
+    return Boolean(categoryIntelligence.value && clarifyResult.value?.ready_to_search);
+  }
+  if (stageKey === "results") {
+    return Boolean(searchResult.value);
+  }
+  return false;
+}
+
+function openStage(stageKey) {
+  if (canOpenStage(stageKey)) {
+    stage.value = stageKey;
+  }
+}
+
 onMounted(async () => {
   try {
     await createSession();
+    await loadLlmConfig();
   } catch (err) {
     error.value = "Could not create a session. Make sure the backend is running.";
   }
@@ -133,17 +275,139 @@ onMounted(async () => {
         :key="item.key"
         class="stage"
         :class="{ active: stage === item.key }"
+        @click="openStage(item.key)"
       >
         {{ item.label }}
       </span>
       <button type="button" @click="resetSession">Reset session</button>
     </section>
 
-    <section v-if="stage === 'understand'" class="workspace">
+    <section v-if="stage === 'category'" class="report-layout">
+      <section class="requirements-panel">
+        <p class="eyebrow">Category</p>
+        <h1>What type of product are you looking to buy?</h1>
+
+        <form class="composer" @submit.prevent="extractCategory">
+          <textarea
+            v-model="categoryInput"
+            rows="2"
+            placeholder="Describe the product you are looking for in plain language..."
+            :disabled="categoryExtractLoading || intelligenceLoading"
+          />
+          <button type="submit" :disabled="categoryExtractLoading || intelligenceLoading || !categoryInput.trim()">
+            {{ categoryExtractLoading ? "Extracting category..." : "Extract category" }}
+          </button>
+        </form>
+
+        <p v-if="error" class="error">{{ error }}</p>
+
+        <section v-if="categoryProposal" class="results-panel">
+          <h2>Extraction Prompt</h2>
+          <pre>{{ categoryProposal.prompt }}</pre>
+
+          <h2>Select the desired category:</h2>
+          <p>Key: {{ categoryProposal.normalized_category_key }}</p>
+          <p>Confidence: {{ categoryProposal.confidence }}</p>
+          <p>Matched existing category: {{ categoryProposal.matched_existing_category ? "yes" : "no" }}</p>
+          <p>{{ categoryProposal.explanation }}</p>
+
+          <section>
+            <h3>What we think you are looking for</h3>
+            <label>
+              <input
+                v-model="calibratedCategory"
+                type="radio"
+                :value="categoryProposal.proposed_category"
+              />
+              {{ categoryProposal.proposed_category }}
+            </label>
+          </section>
+
+          <section>
+            <h3>Broader</h3>
+            <label>
+              <input
+                v-model="calibratedCategory"
+                type="radio"
+                :value="categoryProposal.broader_category"
+              />
+              {{ categoryProposal.broader_category }}
+            </label>
+          </section>
+
+          <section>
+            <h3>More specific</h3>
+            <label v-for="category in categoryProposal.more_specific_categories" :key="category">
+              <input v-model="calibratedCategory" type="radio" :value="category" />
+              {{ category }}
+            </label>
+          </section>
+
+          <button type="button" :disabled="intelligenceLoading" @click="loadCategoryIntelligence">
+            {{ intelligenceLoading ? "Loading category intelligence..." : "Confirm this choice" }}
+          </button>
+          <button type="button" :disabled="intelligenceLoading" @click="changeCategoryInput">
+            Change request
+          </button>
+        </section>
+
+        <section v-if="categoryIntelligence" class="results-panel">
+          <h2>{{ selectedCategory }}</h2>
+
+          <h3>Category Summary</h3>
+          <p>{{ rawIntelligence.category_summary }}</p>
+
+          <h3>Key Decision Factors</h3>
+          <ul>
+            <li v-for="item in visibleKeyDecisionFactors" :key="item">{{ item }}</li>
+          </ul>
+
+          <h3>Entity Candidates</h3>
+          <ul>
+            <li v-for="entity in visibleEntityCandidates" :key="`${entity.name}-${entity.type}`">
+              {{ entity.name }} ({{ entity.type }})
+            </li>
+          </ul>
+
+          <h3>Attribute Schema</h3>
+          <ul>
+            <li v-for="attribute in visibleAttributeSchema" :key="attribute.name">
+              {{ attribute.name }}: {{ attribute.value_type }}, {{ attribute.importance }}
+            </li>
+          </ul>
+
+          <h3>Decision Axes</h3>
+          <ul>
+            <li v-for="axis in visibleDecisionAxes" :key="axis.name">
+              {{ axis.name }}: {{ axis.positive_direction }}
+            </li>
+          </ul>
+
+          <h3>Risks/Gotchas</h3>
+          <ul>
+            <li v-for="risk in visibleRisks" :key="risk">{{ risk }}</li>
+          </ul>
+
+          <h3>Intake Questions</h3>
+          <ul>
+            <li v-for="question in visibleIntakeQuestions" :key="question.question">
+              {{ question.question }} → {{ question.maps_to_attribute }}
+            </li>
+          </ul>
+
+          <button type="button" @click="stage = 'understand'">Continue to Understand</button>
+        </section>
+      </section>
+    </section>
+
+    <section v-else-if="stage === 'understand'" class="workspace">
       <div class="conversation-panel">
         <header>
           <p class="eyebrow">The Short List</p>
-          <h1>Tell me what you need.</h1>
+          <h2>Tell me about what you are looking for in {{ selectedCategory }}</h2>
+          <p v-if="selectedCategory">
+            {{ normalizedIntelligence?.attribute_schema?.length || 0 }} attributes loaded.
+          </p>
         </header>
 
         <div class="messages" aria-live="polite">
@@ -165,10 +429,10 @@ onMounted(async () => {
           <textarea
             v-model="input"
             rows="4"
-            placeholder="Describe the product decision..."
-            :disabled="loading || !sessionId"
+            placeholder="Describe your needs, constraints, preferences, or answers to intake questions..."
+            :disabled="loading || !sessionId || !categoryIntelligence"
           />
-          <button type="submit" :disabled="loading || !sessionId || !input.trim()">
+          <button type="submit" :disabled="loading || !sessionId || !input.trim() || !categoryIntelligence">
             {{ loading ? "Sending..." : "Send" }}
           </button>
         </form>
@@ -195,7 +459,7 @@ onMounted(async () => {
 
           <section>
             <h2>Category</h2>
-            <p v-if="clarifyResult?.category" class="category">{{ clarifyResult.category }}</p>
+            <p v-if="selectedCategory" class="category">{{ selectedCategory }}</p>
             <p v-else class="empty-message">No category yet.</p>
           </section>
 
@@ -225,6 +489,11 @@ onMounted(async () => {
 
         <aside class="requirements-panel" aria-label="Agent trace">
           <p class="eyebrow">Agent Trace</p>
+          <section>
+            <h2>LLM</h2>
+            <p>Provider: {{ llmConfig?.provider || "loading" }}</p>
+            <p>Model: {{ llmConfig?.model || "loading" }}</p>
+          </section>
           <div v-if="agentTrace.length">
             <p v-for="trace in agentTrace" :key="trace">{{ trace }}</p>
           </div>

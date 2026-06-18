@@ -17,6 +17,8 @@ class ClarifyRequest(BaseModel):
     session_id: str
     user_id: str = "default"
     message: str
+    category: str | None = None
+    category_context: dict | None = None
 
 
 class Requirement(BaseModel):
@@ -56,3 +58,31 @@ class SearchResponse(BaseModel):
     status: str
     candidates: list[ProductCandidate] = Field(default_factory=list)
     recommendation: str
+
+
+class CategoryIntelligenceRequest(BaseModel):
+    category: str
+    context: str | None = None
+
+
+class CategoryIntelligenceResponse(BaseModel):
+    category: str
+    raw_intelligence: dict
+    normalized_intelligence: dict
+    cached: bool
+
+
+class CategoryExtractRequest(BaseModel):
+    user_input: str
+    additional_context: str | None = None
+
+
+class CategoryExtractResponse(BaseModel):
+    proposed_category: str
+    normalized_category_key: str
+    broader_category: str
+    more_specific_categories: list[str] = Field(default_factory=list)
+    confidence: str
+    explanation: str
+    matched_existing_category: bool
+    prompt: str

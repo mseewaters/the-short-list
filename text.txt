@@ -1,0 +1,39 @@
+Please refactor the UI flow so Category is its own first tab before Understand.
+
+New tab order:
+
+1. Category
+2. Understand
+3. Research
+4. Your Short List
+
+
+Category tab responsibilities:
+
+* Let the user enter or confirm a product/service category.
+* Call the existing Category Intelligence API.
+* Display raw and normalized category intelligence in a readable but simple way.
+* Show:
+
+  * category summary
+  * key decision factors
+  * entity candidates
+  * attribute schema
+  * decision axes
+  * risks/gotchas
+  * intake questions
+
+Understand tab responsibilities:
+
+* Use the selected category and normalized intelligence as context.
+* Focus only on the user’s specific needs, constraints, preferences, and answers to intake questions.
+* Do not regenerate category intelligence unless the category changes.
+
+State behavior:
+
+* Store selected category and category intelligence in shared app state.
+* If the user changes category, clear downstream Understand/Research/ShortList state.
+* Prevent later tabs from running until Category Intelligence exists.
+* Make the tab labels and state transitions simple and obvious.
+
+Keep UI styling minimal. This is a flow and state architecture change, not a design polish task.

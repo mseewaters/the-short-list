@@ -4,8 +4,15 @@ from uuid import uuid4
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.category_intelligence.llm import CategoryIntelligenceError, get_llm_config_metadata
+from app.category_intelligence.extraction import extract_category
+from app.category_intelligence.service import get_category_intelligence
 from app.graph import compiled_graph
 from app.schemas import (
+    CategoryExtractRequest,
+    CategoryExtractResponse,
+    CategoryIntelligenceRequest,
+    CategoryIntelligenceResponse,
     ClarifyRequest,
     ClarifyResponse,
     CriterionResult,
@@ -320,6 +327,11 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/api/llm-config")
+def llm_config():
+    return get_llm_config_metadata()
+
+
 @app.post("/sessions", response_model=SessionResponse)
 def create_session(request: CreateSessionRequest):
     session_id = f"sess_{uuid4().hex[:12]}"
@@ -362,7 +374,7 @@ def clarify(request: ClarifyRequest):
     graph_state = compiled_graph.invoke(
         {
             "user_message": request.message,
-            "category": previous_intent.get("category_label"),
+            "category": previous_intent.get("category_label") or request.category,
             "raw_requirements": previous_intent.get("raw_requirements", {}),
             "missing_fields": previous_intent.get("missing_fields", []),
             "agent_message": "Got it. I will turn that into requirements next.",
@@ -463,3 +475,29 @@ def search(request: SearchRequest):
         candidates=candidates,
         recommendation=recommendation,
     )
+
+
+@app.post("/api/category-intelligence", response_model=CategoryIntelligenceResponse)
+def category_intelligence(request: CategoryIntelligenceRequest):
+    try:
+        record, cached = get_category_intelligence(
+            category=request.category,
+            context=request.context,
+        )
+    except CategoryIntelligenceError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    return CategoryIntelligenceResponse(
+        category=record.category,
+        raw_intelligence=record.raw_intelligence.model_dump(),
+        normalized_intelligence=record.normalized_intelligence.model_dump(by_alias=True),
+        cached=cached,
+    )
+
+
+@app.post("/api/category-extract", response_model=CategoryExtractResponse)
+def category_extract(request: CategoryExtractRequest):
+    try:
+        return CategoryExtractResponse(**extract_category(request.user_input, request.additional_context))
+    except CategoryIntelligenceError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc

@@ -1,356 +1,389 @@
-# The Short List - Project Context
+# progress.md
 
-## Project Goal
+# The Short List
 
-Build an agentic application that helps overwhelmed people make good consumer decisions.
+## Day 1 - Foundation & Orchestration
 
-The inspiration came from my dad. He frequently needs help researching products (robot vacuums, appliances, electronics, etc.) but becomes overwhelmed by choices and conflicting information.
+Date: June 17, 2026
 
-The system should:
+## Goal
 
-* Accept messy natural language input
-* Convert it into structured requirements
-* Research current products
-* Verify important claims against source material
-* Explain tradeoffs
-* Produce a small set of trustworthy recommendations
+Build the first working end-to-end skeleton for The Short List.
 
-The goal is NOT a shopping assistant.
-
-The goal is a **cognitive load reducer** and **decision support system**.
-
-The output is not "the best product".
-
-The output is **The Short List**.
+The focus was intentionally **not intelligence**, but orchestration.
 
 ---
 
-## Project Name
+## Project Vision
 
-Project Name: The Short List
+The Short List is a consumer decision support application.
 
-Repository Name:
+Goal:
+
+Help overwhelmed people make good decisions by translating messy requirements into trustworthy recommendations.
+
+This is not a shopping assistant.
+
+This is a cognitive load reduction system.
+
+Workflow:
+
+Messy human input
+
+↓
+
+Requirements extraction
+
+↓
+
+Clarification
+
+↓
+
+Research
+
+↓
+
+The Short List
+
+---
+
+## Major Accomplishments
+
+### Repository established
+
+Repository name:
 
 the-short-list
 
-Tagline (working):
+Initial docs structure created.
 
-Less guesswork. Better choices.
+Documentation includes:
 
-Other ideas:
-
-* Helping real people make good decisions
-* From messy requirements to trustworthy recommendations
+* product specification
+* UX specification
+* domain model
+* agent contracts
+* API contracts
+* system architecture
+* backlog
 
 ---
 
-## Technical Goals
+## Backend established
 
-Primary goal:
-
-Learn multi-agent systems and orchestration.
-
-Secondary goal:
-
-Ship a Father's Day MVP.
-
-Technology stack:
-
-Frontend:
-
-* Vue
-
-Backend:
+Technology:
 
 * FastAPI
-
-Agent Framework:
-
-* LangChain
 * LangGraph
 
-Future AWS components:
+Endpoints created:
 
+* GET /health
+* POST /sessions
+* POST /clarify
+* POST /search
+
+FastAPI documentation available via Swagger.
+
+---
+
+## LangGraph established
+
+Basic orchestration implemented.
+
+Current flow:
+
+Input
+
+↓
+
+Intent Agent
+
+↓
+
+Requirements Agent
+
+↓
+
+Response Agent
+
+Current implementation is intentionally deterministic.
+
+No LLMs yet.
+
+---
+
+## Session state implemented
+
+Session state now persists across multiple interactions.
+
+Subsequent responses no longer overwrite previous requirements.
+
+The system can progressively build understanding over multiple turns.
+
+Example:
+
+User:
+
+"I need a ceiling fan for an old house bedroom."
+
+User:
+
+"Budget is $300 and my ceiling is 8 feet."
+
+The system accumulates understanding instead of replacing it.
+
+---
+
+## Clarification loop implemented
+
+The system now:
+
+* extracts requirements
+* identifies missing information
+* asks follow-up questions
+* determines when enough information exists to proceed
+
+The "Confirm" stage was intentionally removed.
+
+New product flow:
+
+Understand
+
+↓
+
+Research
+
+↓
+
+Your Short List
+
+The requirements panel itself serves as confirmation.
+
+---
+
+## Search flow implemented
+
+A mock research flow now exists.
+
+The system can:
+
+* trigger search
+* generate hardcoded candidates
+* produce recommendations
+
+This is intentionally fake data.
+
+The goal was proving orchestration.
+
+---
+
+## Key Architectural Decisions
+
+### No infrastructure yet
+
+Explicitly postponed:
+
+* AWS
 * DynamoDB
-* S3
-* Bedrock
-* Possibly Step Functions later
+* Step Functions
+* Docker
+* Authentication
+* CI/CD
+* LangSmith
 
-Important rule:
+### Product architecture over visual design
 
-Use LangGraph as the orchestrator first.
+Prioritized:
 
-Do NOT introduce Step Functions for the MVP.
+* state
+* workflows
+* information architecture
 
----
+Deferred:
 
-## Architectural Principles
+* colors
+* fonts
+* spacing
+* animations
 
-1. Evidence over hallucination
+### Product language established
 
-Every recommendation should be traceable.
+Project name:
 
-2. Requirements over products
+The Short List
 
-The system is fundamentally a requirements translation engine.
-
-3. Dynamic categories
-
-The user may search for:
-
-* Robot vacuums
-* Ceiling fans
-* TVs
-* Routers
-* Coffee makers
-* Etc.
-
-The system determines category dynamically.
-
-4. Human-first UX
-
-The experience should feel like a trusted person helping another person.
-
-5. Trust over optimization
-
-The system should say:
-
-"I don't know."
-
-instead of inventing answers.
+This is a decision support system, not an AI shopping assistant.
 
 ---
 
-## Important Design Changes
+## Biggest Lesson Learned Today
 
-We intentionally moved away from an appliance finder.
+Agents are less magical than expected.
 
-The product is for:
+Most of the work is:
 
-People helping other people make decisions.
+state
 
-Personas:
+↓
 
-1. Family helper (me helping my parents)
+contracts
 
-2. Independent shopper (me researching house renovation purchases)
+↓
 
-3. Senior shopper
+workflows
 
----
+↓
 
-## Current Repo Structure
+orchestration
 
-Repository already exists.
+The LLM is a small piece of the overall system.
 
-Current status:
-
-✅ Repo created
-
-✅ Documentation created
-
-✅ Starter Python files created
-
-Current folders:
-
-the-short-list/
-(or eventually renamed to the-short-list)
-
-docs/
-
-backend/
-app/
-
-frontend/
-
-README.md
+Good system design matters more than AI cleverness.
 
 ---
 
-## Documentation Structure
+# Tomorrow's Goal - Intelligence Day
 
-01-product-spec.md
+Goal:
 
-02-ui-ux-spec.md
+Replace one deterministic component with a real LLM implementation.
 
-03-domain-model.md
+Only one.
 
-04-agent-contracts.md
-
-05-api-contracts.md
-
-06-system-architecture.md
-
-07-backlog.md
-
-README.md
+Do not replace everything at once.
 
 ---
 
-## Key Architecture Decision
+## Tomorrow's Priority Work
 
-Think:
+### 1. Introduce Category Intelligence
 
-Experience + Orchestrator
+Current:
 
-NOT:
+Hardcoded:
 
-Frontend + Backend
+if "ceiling fan"
 
-The backend is the product.
+Tomorrow:
 
-Vue is simply the window into it.
+Allow the system to dynamically understand categories.
 
----
+Input:
 
-## Today's Goal
+"I need a projector for a bright room."
 
-Target completion: End of day
+Output:
 
-Deliverable:
+Category:
 
-A local full-stack skeleton.
+Projector
 
-The user can type:
+Important attributes:
 
-"I need a ceiling fan for an old house bedroom. I care about quiet, low profile, and not ugly."
-
-And:
-
-1. Vue displays the message
-
-2. FastAPI receives the request
-
-3. LangGraph executes a fake workflow
-
-4. Backend returns structured requirements JSON
-
-5. Requirements panel updates
-
-No intelligence required yet.
-
-Just orchestration.
+* brightness
+* throw distance
+* room lighting
 
 ---
 
-## Today's Exact Scope
+### 2. Build Dynamic Category Schema
 
-Do:
+Introduce a new node.
 
-✅ FastAPI
+Category Schema Agent
 
-✅ Vue
+Input:
 
-✅ Fake LangGraph
+Category
 
-✅ Requirements panel
+Output:
 
-✅ End-to-end communication
+Relevant attributes for that category.
 
-Do NOT do:
+Example:
 
-❌ AWS
+Ceiling fan:
 
-❌ DynamoDB
+* room size
+* ceiling height
+* blade span
+* profile
+* noise
 
-❌ Step Functions
+TV:
 
-❌ Authentication
+* brightness
+* panel type
+* refresh rate
 
-❌ Deployment
-
-❌ LangSmith
-
-❌ Caching
-
-❌ Infrastructure optimization
-
-❌ Architecture polishing
+This becomes foundational for future research.
 
 ---
 
-## Files to Create Today
+### 3. Add Agent Trace Visibility
 
-backend/app/
+Add a developer panel.
 
-main.py
+Display:
 
-graph.py
+Intent Agent
 
-schemas.py
+Requirements Agent
 
-state.py
+Category Schema Agent
 
-agents/
+Research Agent
 
-intent_agent.py
+This is a learning tool.
 
-requirements_agent.py
-
-response_agent.py
+Do not optimize visually.
 
 ---
 
-## shortlistState
+## Still Forbidden
 
-Everything flows through this object.
+No AWS
 
-Start simple.
+No DynamoDB
 
-```python
-from typing import TypedDict
+No Docker
 
-class shortlistState(TypedDict):
-    user_message: str
+No Step Functions
 
-    category: str | None
+No Authentication
 
-    raw_requirements: dict
+No CI/CD
 
-    missing_fields: list[str]
+No LangSmith
 
-    agent_message: str
-
-    ready_to_search: bool
-```
-
-Keep it intentionally small.
-
----
-
-## Project Rules
+No Terraform
 
 No basement waterproofing.
 
-Translation:
+---
 
-Do not disappear into beautiful infrastructure work that does not advance the MVP.
+## Success Metric For Tomorrow
 
-Examples:
+The Short List should be able to intelligently understand multiple categories without hardcoded category logic.
 
-* AWS account setup
-* Terraform
-* Docker
-* CI/CD
-* Logging
-* Monitoring
-* Authentication
-* DynamoDB
+The user should be able to switch from:
 
-If an infrastructure idea appears:
+Ceiling fan
 
-Write it down in:
+to
 
-docs/parking-lot.md
+Robot vacuum
 
-Then return to the task.
+to
+
+TV
+
+without changing application code.
 
 ---
 
-## Success Metric For Today
+## Future Motto
 
-By end of day I should be able to say:
-
-"Vue is talking to FastAPI which is talking to LangGraph."
-
-Nothing more.
+Less guesswork. Better choices.
