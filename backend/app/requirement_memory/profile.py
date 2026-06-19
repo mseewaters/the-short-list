@@ -19,6 +19,7 @@ from app.requirement_memory.extraction import extract_requirements_from_message
 from app.requirement_memory.enrichment import enrich_requirements_for_scoring
 from app.requirement_memory.questions import build_follow_up_questions
 from app.requirement_memory.clarification import (
+    is_user_clarifying_question,
     questioned_attribute_name,
     filter_questioned_attribute_observations,
 )
@@ -110,6 +111,7 @@ def _generate_requirement_observations(
 ) -> list[UserRequirement]:
     """Extract observations from the message via local rules or LLM, then enrich them."""
     questioned_attribute = questioned_attribute_name(latest_user_message, category_context)
+    message_is_question = is_user_clarifying_question(latest_user_message)
     load_local_env()
     provider_name = os.getenv("LLM_PROVIDER", "local").lower()
 
@@ -120,7 +122,9 @@ def _generate_requirement_observations(
             category_context=category_context,
             timestamp=timestamp,
         )
-        observations = filter_questioned_attribute_observations(observations, questioned_attribute)
+        observations = filter_questioned_attribute_observations(
+            observations, questioned_attribute, message_is_question
+        )
         return enrich_requirements_for_scoring(observations, attributes)
 
     prompt = build_requirement_memory_prompt(
@@ -137,7 +141,9 @@ def _generate_requirement_observations(
             category_context=category_context,
             timestamp=timestamp,
         )
-        observations = filter_questioned_attribute_observations(observations, questioned_attribute)
+        observations = filter_questioned_attribute_observations(
+            observations, questioned_attribute, message_is_question
+        )
         return enrich_requirements_for_scoring(observations, attributes)
     except (CategoryIntelligenceError, ValueError, TypeError):
         observations = extract_requirements_from_message(
@@ -146,7 +152,9 @@ def _generate_requirement_observations(
             category_context=category_context,
             timestamp=timestamp,
         )
-        observations = filter_questioned_attribute_observations(observations, questioned_attribute)
+        observations = filter_questioned_attribute_observations(
+            observations, questioned_attribute, message_is_question
+        )
         return enrich_requirements_for_scoring(observations, attributes)
 
 

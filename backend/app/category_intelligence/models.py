@@ -1,87 +1,39 @@
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 
-class CategoryIntelligence(BaseModel):
-    category_summary: str
-    buyer_need: str
-    key_decision_factors: list[str] = Field(default_factory=list)
-    common_entities: list[str] = Field(default_factory=list)
-    important_attributes: list[str] = Field(default_factory=list)
-    comparison_dimensions: list[str] = Field(default_factory=list)
-    risks_or_gotchas: list[str] = Field(default_factory=list)
-    good_default_recommendation_logic: list[str] = Field(default_factory=list)
-    clarifying_questions: list[str] = Field(default_factory=list)
-    confidence: Literal["low", "medium", "high"]
-
-
-class EntityCandidate(BaseModel):
-    name: str
-    type: Literal[
-        "product_type",
-        "feature",
-        "installation_constraint",
-        "performance_metric",
-        "style",
-        "risk",
-    ]
-    synonyms: list[str] = Field(default_factory=list)
-    source_field: str
-
-
-class AttributeSchemaItem(BaseModel):
-    name: str
-    value_type: Literal["string", "number", "boolean", "enum", "range"]
-    unit: str | None = None
-    importance: Literal["high", "medium", "low"]
-    user_visible: bool
-    comparison_relevant: bool
+class DecisionAttribute(BaseModel):
+    key: str                          # stable snake_case identifier, e.g. "noise_level"
+    name: str                         # display name, e.g. "Noise Level"
+    search_gate: bool                 # True = must be resolved (value OR "don't care") before search
+    value_type: Literal["number", "enum", "boolean", "range", "string"]
+    unit: str | None = None           # "dB", "inches", "usd", "sq_ft" — None for enum/bool/string
     score_direction: Literal[
         "higher_is_better",
         "lower_is_better",
-        "match_user_preference",
+        "match_preference",
         "must_have",
-        "informational",
     ]
-    evidence_type: Literal["spec", "review", "user_preference", "expert_rule", "mixed"]
-    quantifiable: bool
+    typical_values: list[Any] | None = None   # [min, max] for number/range; option list for enum
+    clarifying_question: str          # full sentence to ask the user
+    extraction_signals: list[str] = Field(default_factory=list)   # phrases users say for this attribute
+    assessment_note: str = ""         # one-sentence scoring guidance
 
 
-class DecisionAxis(BaseModel):
-    name: str
-    positive_direction: str
-    tradeoff_against: str | None = None
-    derived_from: str
-
-
-class GraphEdge(BaseModel):
-    from_: str = Field(alias="from")
-    relationship: Literal["HAS_ENTITY", "HAS_ATTRIBUTE", "IMPACTS", "RELATES_TO", "TRADEOFF_WITH"]
-    to: str
-    confidence: Literal["low", "medium", "high"]
-
-
-class IntakeQuestion(BaseModel):
-    question: str
-    maps_to_attribute: str
-    priority: Literal["high", "medium", "low"]
-    answer_type: Literal["string", "number", "boolean", "enum", "range"]
-
-
-class NormalizedCategoryIntelligence(BaseModel):
-    entity_candidates: list[EntityCandidate] = Field(default_factory=list)
-    attribute_schema: list[AttributeSchemaItem] = Field(default_factory=list)
-    decision_axes: list[DecisionAxis] = Field(default_factory=list)
-    graph_edges: list[GraphEdge] = Field(default_factory=list)
-    intake_questions: list[IntakeQuestion] = Field(default_factory=list)
+class CategorySchema(BaseModel):
+    category: str
+    summary: str                      # one-sentence buyer need
+    decision_attributes: list[DecisionAttribute] = Field(default_factory=list)
+    entity_terms: list[str] = Field(default_factory=list)   # product-type terms users commonly name
+    risks: list[str] = Field(default_factory=list)          # purchase gotchas
+    confidence: Literal["low", "medium", "high"] = "medium"
 
 
 class CategoryIntelligenceRecord(BaseModel):
     category: str
     normalized_category_key: str
-    raw_intelligence: CategoryIntelligence
-    normalized_intelligence: NormalizedCategoryIntelligence
+    category_schema: CategorySchema
     created_at: str
     updated_at: str
     model_metadata: dict

@@ -1,7 +1,6 @@
 """Category router: /api/category-intelligence, /api/category-extract, /api/llm-config.
 
-Provides category schema generation (via category intelligence) and free-text
-category extraction from user input.
+Provides category schema generation and free-text category extraction from user input.
 """
 
 from fastapi import APIRouter, HTTPException
@@ -36,8 +35,7 @@ def category_intelligence(request: CategoryIntelligenceRequest):
 
     return CategoryIntelligenceResponse(
         category=record.category,
-        raw_intelligence=record.raw_intelligence.model_dump(),
-        normalized_intelligence=record.normalized_intelligence.model_dump(by_alias=True),
+        category_schema=record.category_schema.model_dump(),
         cached=cached,
     )
 

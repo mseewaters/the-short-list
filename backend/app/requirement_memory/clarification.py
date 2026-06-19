@@ -54,9 +54,18 @@ def questioned_attribute_name(message: str, category_context: dict | None) -> st
 def filter_questioned_attribute_observations(
     observations: list[UserRequirement],
     questioned_attribute: str | None,
+    message_is_question: bool = False,
 ) -> list[UserRequirement]:
-    """Remove observations for the attribute being questioned when the evidence is question-like."""
+    """Remove observations for the attribute being questioned when the evidence is question-like.
+
+    When the whole message is a general question but no specific attribute was
+    matched (questioned_attribute is None), still remove any observation whose
+    evidence phrase looks like question language — those are vague inferences
+    from the question itself, not real requirements.
+    """
     if questioned_attribute is None:
+        if message_is_question:
+            return [o for o in observations if not evidence_looks_like_question(o.evidence)]
         return observations
     filtered = []
     for observation in observations:
@@ -131,64 +140,36 @@ def local_attribute_answer(
     attribute: dict,
     category_context: dict | None,
 ) -> str:
-    """Return a short deterministic answer based on entity candidates for the attribute."""
+    """Return a short deterministic answer using the attribute's own context."""
     attribute_name = str(attribute.get("name", "this attribute"))
-    relevant_entities = relevant_entities_for_question(
-        latest_user_message=latest_user_message,
-        attribute=attribute,
-        category_context=category_context,
-    )
+    typical_values = attribute.get("typical_values") or []
+    assessment_note = str(attribute.get("assessment_note", "")).strip()
 
-    if relevant_entities:
-        option_text = human_join([entity["name"] for entity in relevant_entities[:5]])
-        return (
-            f"For {attribute_name}, common options in {category_name or 'this category'} include {option_text}. "
+    # Use typical_values as option list when available
+    if isinstance(typical_values, list) and typical_values:
+        option_text = human_join([str(v) for v in typical_values[:5]])
+        base = (
+            f"For {attribute_name}, common options include {option_text}. "
             "The best choice depends on your situation and which tradeoffs matter most."
+        )
+        if assessment_note:
+            base += f" {assessment_note}"
+        return base
+
+    # Fall back to entity terms
+    entity_terms = [e["name"] for e in extract_entity_candidates(category_context)]
+    message_tokens = tokens(latest_user_message)
+    relevant = [t for t in entity_terms if tokens(t).intersection(message_tokens)][:5]
+
+    if relevant:
+        option_text = human_join(relevant)
+        return (
+            f"For {attribute_name}, related options in {category_name or 'this category'} "
+            f"include {option_text}. {assessment_note or 'The best choice depends on your tradeoffs.'}"
         )
 
     return (
-        f"{attribute_name} is one of the decision attributes for {category_name or 'this category'}. "
-        "The useful options depend on your situation; tell me what tradeoff you care about most and I can map it to a requirement."
+        f"{attribute_name} is one of the key decision attributes for "
+        f"{category_name or 'this category'}. "
+        f"{assessment_note or 'Tell me what matters most to you and I can map it to a requirement.'}"
     )
-
-
-def relevant_entities_for_question(
-    *,
-    latest_user_message: str,
-    attribute: dict,
-    category_context: dict | None,
-) -> list[dict]:
-    """Return entities relevant to the user's question, ranked by token overlap."""
-    entities = extract_entity_candidates(category_context)
-    attribute_tokens = tokens(str(attribute.get("name", "")))
-    message_tokens = tokens(latest_user_message)
-    scored: list[tuple[int, dict]] = []
-
-    for entity in entities:
-        entity_name = str(entity.get("name", ""))
-        entity_tokens = tokens(entity_name)
-        source_field = str(entity.get("source_field", "")).lower()
-        entity_type = str(entity.get("type", "")).lower()
-        score = len(entity_tokens.intersection(attribute_tokens)) * 2
-        score += len(entity_tokens.intersection(message_tokens))
-        if source_field in {"common_entities", "important_attributes"}:
-            score += 1
-        if entity_type in {"product_type", "feature", "installation_constraint", "performance_metric", "style"}:
-            score += 1
-        if score > 0:
-            scored.append((score, entity))
-
-    scored.sort(key=lambda item: (-item[0], str(item[1].get("name", "")).lower()))
-    return _dedupe_entities([entity for _score, entity in scored])
-
-
-def _dedupe_entities(entities: list[dict]) -> list[dict]:
-    seen: set[str] = set()
-    deduped: list[dict] = []
-    for entity in entities:
-        key = str(entity.get("name", "")).lower()
-        if not key or key in seen:
-            continue
-        seen.add(key)
-        deduped.append(entity)
-    return deduped

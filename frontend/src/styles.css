@@ -176,6 +176,21 @@ button:disabled {
   background: var(--accent);
 }
 
+.reset-requirements-btn {
+  font-size: 12px;
+  padding: 4px 10px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--ink-mid);
+  cursor: pointer;
+}
+
+.reset-requirements-btn:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
 .category {
   margin: 0 0 18px;
   color: var(--ink-mid);

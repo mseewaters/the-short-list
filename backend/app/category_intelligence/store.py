@@ -4,11 +4,7 @@ from collections import OrderedDict
 from datetime import datetime, timezone
 from pathlib import Path
 
-from app.category_intelligence.models import (
-    CategoryIntelligence,
-    CategoryIntelligenceRecord,
-    NormalizedCategoryIntelligence,
-)
+from app.category_intelligence.models import CategoryIntelligenceRecord, CategorySchema
 
 logger = logging.getLogger(__name__)
 
@@ -47,8 +43,7 @@ def get_cached_category_intelligence(normalized_category_key: str) -> CategoryIn
 def save_category_intelligence(
     category: str,
     normalized_category_key: str,
-    raw_intelligence: CategoryIntelligence,
-    normalized_intelligence: NormalizedCategoryIntelligence,
+    category_schema: CategorySchema,
     model_metadata: dict,
 ) -> CategoryIntelligenceRecord:
     now = datetime.now(timezone.utc).isoformat()
@@ -57,8 +52,7 @@ def save_category_intelligence(
     record = CategoryIntelligenceRecord(
         category=category,
         normalized_category_key=normalized_category_key,
-        raw_intelligence=raw_intelligence,
-        normalized_intelligence=normalized_intelligence,
+        category_schema=category_schema,
         created_at=existing.created_at if existing else now,
         updated_at=now,
         model_metadata=model_metadata,

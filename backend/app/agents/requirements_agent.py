@@ -6,6 +6,7 @@ from app.requirement_memory import (
     profile_to_requirement_display,
     update_user_requirement_profile,
 )
+from app.requirement_memory.attributes import extract_attribute_schema
 from app.state import shortlistState
 
 
@@ -27,10 +28,28 @@ def requirements_agent(state: shortlistState) -> shortlistState:
     raw_requirements = {r["label"]: r["value"] for r in display_requirements}
     missing_fields = missing_fields_from_profile(profile)
     prompt_count = state.get("clarification_prompt_count", 0)
+
+    # Build the set of search_gate attribute names so we only block on
+    # "needs more specification" for attributes that actually gate the search.
+    decision_attributes = extract_attribute_schema(state.get("category_context") or {})
+    search_gate_names = {
+        str(a.get("name", "")).lower()
+        for a in decision_attributes
+        if a.get("search_gate")
+    }
+    blocking_fields = []
+    for q in profile.followUpQuestions:
+        if q.reason == "missing_search_gate_requirement":
+            blocking_fields.append(q)
+        elif (
+            q.reason == "requirement_needs_more_specification_for_scoring"
+            and q.mapsToAttribute.lower() in search_gate_names
+        ):
+            blocking_fields.append(q)
     ready_to_search = (
         state.get("category") is not None
         and bool(display_requirements)
-        and (len(missing_fields) == 0 or prompt_count >= 4)
+        and (len(blocking_fields) == 0 or prompt_count >= 4)
     )
 
     return {

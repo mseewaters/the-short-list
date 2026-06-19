@@ -27,17 +27,14 @@ const requirements = computed(() => clarifyResult.value?.requirements || []);
 const missingFields = computed(() => clarifyResult.value?.missing_fields || []);
 const agentTrace = computed(() => clarifyResult.value?.agent_trace || []);
 const userRequirementProfile = computed(() => clarifyResult.value?.user_requirement_profile || null);
-const rawIntelligence = computed(() => categoryIntelligence.value?.raw_intelligence || null);
-const normalizedIntelligence = computed(() => categoryIntelligence.value?.normalized_intelligence || null);
-const visibleKeyDecisionFactors = computed(() => rawIntelligence.value?.key_decision_factors?.slice(0, 8) || []);
-const visibleEntityCandidates = computed(() => normalizedIntelligence.value?.entity_candidates?.slice(0, 8) || []);
-const visibleAttributeSchema = computed(() => normalizedIntelligence.value?.attribute_schema?.slice(0, 10) || []);
-const visibleDecisionAxes = computed(() => normalizedIntelligence.value?.decision_axes?.slice(0, 6) || []);
-const visibleRisks = computed(() => rawIntelligence.value?.risks_or_gotchas?.slice(0, 5) || []);
-const visibleIntakeQuestions = computed(() => normalizedIntelligence.value?.intake_questions?.slice(0, 6) || []);
+const categorySchema = computed(() => categoryIntelligence.value?.category_schema || null);
+const visibleDecisionAttributes = computed(() => categorySchema.value?.decision_attributes?.slice(0, 12) || []);
+const visibleSearchGateAttributes = computed(() => visibleDecisionAttributes.value.filter((a) => a.search_gate));
+const visibleEntityTerms = computed(() => categorySchema.value?.entity_terms?.slice(0, 8) || []);
+const visibleRisks = computed(() => categorySchema.value?.risks?.slice(0, 5) || []);
 const requirementScoringPreview = computed(() => {
   const profile = userRequirementProfile.value;
-  const attributes = normalizedIntelligence.value?.attribute_schema || [];
+  const attributes = categorySchema.value?.decision_attributes || [];
   const attributeByName = new Map(
     attributes.map((attribute) => [attribute.name?.toLowerCase(), attribute]),
   );
@@ -71,9 +68,9 @@ const requirementScoringPreview = computed(() => {
         evidence: requirement.evidence,
         productAttributeExpected: attribute.name || requirement.attributeName,
         productValueType: attribute.value_type || "unknown",
-        scoreDirection: attribute.score_direction || "match_user_preference",
-        evidenceTypeNeeded: attribute.evidence_type || "mixed",
-        quantifiable: Boolean(attribute.quantifiable),
+        scoreDirection: attribute.score_direction || "match_preference",
+        searchGate: Boolean(attribute.search_gate),
+        typicalValues: attribute.typical_values || null,
         scoringUse: scoringUseFor(requirement, attribute),
       };
     }),
@@ -135,6 +132,27 @@ async function resetSession() {
   await createSession();
 }
 
+async function resetRequirements() {
+  if (!sessionId.value || loading.value) {
+    return;
+  }
+
+  loading.value = true;
+  error.value = "";
+
+  try {
+    await apiFetch(`/sessions/${sessionId.value}/reset-requirements`, { method: "POST" });
+    messages.value = [];
+    clarifyResult.value = null;
+    searchResult.value = null;
+    input.value = "";
+  } catch (err) {
+    error.value = `Could not reset requirements. ${err.message}`;
+  } finally {
+    loading.value = false;
+  }
+}
+
 function clearDownstreamState() {
   messages.value = [];
   clarifyResult.value = null;
@@ -175,7 +193,7 @@ async function submitClarify(message, retried = false) {
         user_id: "default",
         message,
         category: selectedCategory.value,
-        category_context: normalizedIntelligence.value,
+        category_context: categorySchema.value,
       }),
     });
   } catch (err) {
@@ -295,7 +313,7 @@ function scoringUseFor(requirement, attribute) {
   if (requirement.status === "conflicted") {
     return "needs_resolution_before_scoring";
   }
-  if (attribute.score_direction === "must_have" || requirement.importance === "critical") {
+  if (attribute.score_direction === "must_have" || attribute.search_gate) {
     return "filter_or_heavy_penalty_if_unmet";
   }
   if (attribute.score_direction === "lower_is_better") {
@@ -303,9 +321,6 @@ function scoringUseFor(requirement, attribute) {
   }
   if (attribute.score_direction === "higher_is_better") {
     return "score_higher_product_value_better_against_user_threshold_or_preference";
-  }
-  if (attribute.score_direction === "informational") {
-    return "show_as_context_do_not_rank_heavily";
   }
   return "score_match_to_user_preference";
 }
@@ -427,44 +442,33 @@ onMounted(async () => {
           <h2>{{ selectedCategory }}</h2>
 
           <h3>Category Summary</h3>
-          <p>{{ rawIntelligence.category_summary }}</p>
+          <p>{{ categorySchema?.summary }}</p>
 
-          <h3>Key Decision Factors</h3>
+          <h3>Must Resolve Before Search</h3>
           <ul>
-            <li v-for="item in visibleKeyDecisionFactors" :key="item">{{ item }}</li>
-          </ul>
-
-          <h3>Entity Candidates</h3>
-          <ul>
-            <li v-for="entity in visibleEntityCandidates" :key="`${entity.name}-${entity.type}`">
-              {{ entity.name }} ({{ entity.type }})
+            <li v-for="attribute in visibleSearchGateAttributes" :key="attribute.key">
+              <strong>{{ attribute.name }}</strong> — {{ attribute.clarifying_question }}
             </li>
           </ul>
 
-          <h3>Attribute Schema</h3>
+          <h3>Decision Attributes</h3>
           <ul>
-            <li v-for="attribute in visibleAttributeSchema" :key="attribute.name">
-              {{ attribute.name }}: {{ attribute.value_type }}, {{ attribute.importance }}
+            <li v-for="attribute in visibleDecisionAttributes" :key="attribute.key">
+              {{ attribute.name }}
+              ({{ attribute.value_type }}{{ attribute.unit ? ', ' + attribute.unit : '' }},
+              {{ attribute.score_direction }})
+              <span v-if="attribute.search_gate"> 🔑</span>
             </li>
           </ul>
 
-          <h3>Decision Axes</h3>
+          <h3>Common Product Terms</h3>
           <ul>
-            <li v-for="axis in visibleDecisionAxes" :key="axis.name">
-              {{ axis.name }}: {{ axis.positive_direction }}
-            </li>
+            <li v-for="term in visibleEntityTerms" :key="term">{{ term }}</li>
           </ul>
 
-          <h3>Risks/Gotchas</h3>
+          <h3>Risks / Gotchas</h3>
           <ul>
             <li v-for="risk in visibleRisks" :key="risk">{{ risk }}</li>
-          </ul>
-
-          <h3>Intake Questions</h3>
-          <ul>
-            <li v-for="question in visibleIntakeQuestions" :key="question.question">
-              {{ question.question }} → {{ question.maps_to_attribute }}
-            </li>
           </ul>
 
           <button type="button" @click="stage = 'understand'">Continue to Understand</button>
@@ -478,7 +482,7 @@ onMounted(async () => {
           <p class="eyebrow">The Short List</p>
           <h2>Tell me about what you are looking for in {{ selectedCategory }}</h2>
           <p v-if="selectedCategory">
-            {{ normalizedIntelligence?.attribute_schema?.length || 0 }} attributes loaded.
+            {{ categorySchema?.decision_attributes?.length || 0 }} decision attributes loaded.
           </p>
         </header>
 
@@ -527,6 +531,15 @@ onMounted(async () => {
           <div class="panel-header">
             <p class="eyebrow">Requirements</p>
             <strong>{{ requirements.length }}</strong>
+            <button
+              v-if="clarifyResult"
+              type="button"
+              class="reset-requirements-btn"
+              :disabled="loading"
+              @click="resetRequirements"
+            >
+              Reset
+            </button>
           </div>
 
           <section>

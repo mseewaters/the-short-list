@@ -9,669 +9,569 @@ from app.requirement_memory import update_user_requirement_profile
 
 
 CEILING_FAN_CONTEXT = {
-    "attribute_schema": [
+    "decision_attributes": [
         {
+            "key": "noise_level",
             "name": "Noise Level",
+            "search_gate": False,
             "value_type": "string",
-            "importance": "high",
-        },
-        {
-            "name": "Budget",
-            "value_type": "number",
-            "importance": "high",
             "score_direction": "lower_is_better",
+            "typical_values": None,
+            "clarifying_question": "How quiet does it need to be?",
+            "extraction_signals": ["quiet", "noisy", "noise", "silent", "loud"],
+            "assessment_note": "",
         },
         {
+            "key": "budget",
+            "name": "Budget",
+            "search_gate": True,
+            "value_type": "number",
+            "unit": "usd",
+            "score_direction": "lower_is_better",
+            "typical_values": [50, 500],
+            "clarifying_question": "What is your budget?",
+            "extraction_signals": ["budget", "spend", "cost", "price", "under $", "less than"],
+            "assessment_note": "",
+        },
+        {
+            "key": "style",
             "name": "Style",
+            "search_gate": False,
             "value_type": "enum",
-            "importance": "medium",
+            "score_direction": "match_preference",
+            "typical_values": ["modern", "traditional", "industrial", "farmhouse"],
+            "clarifying_question": "What style do you prefer?",
+            "extraction_signals": ["style", "design", "look", "aesthetic"],
+            "assessment_note": "",
         },
     ],
-    "intake_questions": [
-        {
-            "question": "What is your budget?",
-            "maps_to_attribute": "Budget",
-            "priority": "high",
-            "answer_type": "number",
-        },
-        {
-            "question": "How quiet does it need to be?",
-            "maps_to_attribute": "Noise Level",
-            "priority": "high",
-            "answer_type": "string",
-        },
-    ],
+    "entity_terms": [],
 }
 
 
 CEILING_FAN_SCHEMA_MATCH_CONTEXT = {
-    "entity_candidates": [
+    "decision_attributes": [
         {
-            "name": "Dimmable lights",
-            "type": "feature",
-            "maps_to_attribute": "Lighting Control",
-        },
-        {
-            "name": "Alexa",
-            "type": "compatibility_target",
-            "maps_to_attribute": "Smart Home Compatibility",
-        },
-    ],
-    "attribute_schema": [
-        {
+            "key": "noise_level",
             "name": "Noise Level",
+            "search_gate": False,
             "value_type": "string",
-            "importance": "high",
-            "comparison_relevant": True,
             "score_direction": "lower_is_better",
+            "typical_values": None,
+            "clarifying_question": "How quiet does it need to be?",
+            "extraction_signals": ["quiet", "noisy", "noise", "silent"],
+            "assessment_note": "",
         },
         {
+            "key": "lighting_control",
             "name": "Lighting Control",
+            "search_gate": False,
             "value_type": "enum",
-            "importance": "high",
-            "comparison_relevant": True,
-            "score_direction": "match_user_preference",
+            "score_direction": "match_preference",
+            "typical_values": ["dimmable", "led", "no light", "included"],
+            "clarifying_question": "What lighting do you need?",
+            "extraction_signals": ["dimmable lights", "dimmable", "dimmer", "lights", "led", "light kit"],
+            "assessment_note": "",
         },
         {
+            "key": "smart_home_compatibility",
             "name": "Smart Home Compatibility",
+            "search_gate": False,
             "value_type": "enum",
-            "importance": "high",
-            "comparison_relevant": True,
-            "score_direction": "match_user_preference",
+            "score_direction": "match_preference",
+            "typical_values": ["Alexa", "Google Home", "HomeKit", "None"],
+            "clarifying_question": "Do you need smart home compatibility?",
+            "extraction_signals": ["alexa", "google home", "homekit", "smart home", "voice control", "works with"],
+            "assessment_note": "",
         },
         {
+            "key": "indoor_damp_wet_rating",
             "name": "Indoor/Damp/Wet Rating",
+            "search_gate": False,
             "value_type": "enum",
-            "importance": "high",
-            "comparison_relevant": True,
             "score_direction": "must_have",
+            "typical_values": ["indoor/dry", "damp", "wet/outdoor"],
+            "clarifying_question": "Where will the fan be installed: indoors, damp, or wet/outdoor?",
+            "extraction_signals": ["indoor", "outdoor", "damp", "wet", "location", "rating"],
+            "assessment_note": "",
         },
     ],
-    "intake_questions": [
-        {
-            "question": "How quiet does it need to be?",
-            "maps_to_attribute": "Noise Level",
-            "priority": "high",
-            "answer_type": "string",
-        },
-        {
-            "question": "Where will the fan be installed: indoors, damp location, or wet/outdoor location?",
-            "maps_to_attribute": "Indoor/Damp/Wet Rating",
-            "priority": "high",
-            "answer_type": "enum",
-        },
-    ],
+    "entity_terms": ["Dimmable lights", "Alexa"],
 }
 
 
 CEILING_FAN_UI_FOLLOWUP_CONTEXT = {
-    "entity_candidates": [
+    "decision_attributes": [
         {
-            "name": "Dimmable lights",
-            "type": "feature",
-            "maps_to_attribute": "Lighting Control",
-        },
-        {
-            "name": "Alexa",
-            "type": "compatibility_target",
-            "maps_to_attribute": "Smart Home Compatibility",
-        },
-        {
-            "name": "Remote control",
-            "type": "control_feature",
-            "maps_to_attribute": "Control Features",
-        },
-        {
-            "name": "Reverse airflow",
-            "type": "airflow_feature",
-            "maps_to_attribute": "Airflow Features",
-        },
-    ],
-    "attribute_schema": [
-        {
+            "key": "noise_level",
             "name": "Noise Level",
+            "search_gate": False,
             "value_type": "string",
-            "importance": "high",
-            "comparison_relevant": True,
             "score_direction": "lower_is_better",
+            "typical_values": None,
+            "clarifying_question": "How quiet does it need to be?",
+            "extraction_signals": ["quiet", "noisy", "noise", "silent"],
+            "assessment_note": "",
         },
         {
+            "key": "room_size",
             "name": "Room size",
+            "search_gate": True,
             "value_type": "range",
-            "importance": "high",
-            "comparison_relevant": True,
             "score_direction": "must_have",
+            "typical_values": [75, 400],
+            "clarifying_question": "What room size does it need to support?",
+            "extraction_signals": ["room size", "sq ft", "square feet", "large room", "small room"],
+            "assessment_note": "",
         },
         {
+            "key": "mounting_style",
             "name": "Mounting style",
+            "search_gate": True,
             "value_type": "enum",
-            "importance": "high",
-            "comparison_relevant": True,
             "score_direction": "must_have",
+            "typical_values": ["flush mount", "standard downrod", "hugger"],
+            "clarifying_question": "What mounting style do you need?",
+            "extraction_signals": ["flush mount", "low profile", "hugger", "downrod", "sloped ceiling"],
+            "assessment_note": "",
         },
         {
+            "key": "indoor_outdoor_use",
             "name": "Indoor/outdoor use",
+            "search_gate": False,
             "value_type": "enum",
-            "importance": "high",
-            "comparison_relevant": True,
             "score_direction": "must_have",
+            "typical_values": ["indoor", "damp", "outdoor"],
+            "clarifying_question": "Is this for indoor or outdoor use?",
+            "extraction_signals": ["indoor", "outdoor", "damp", "wet"],
+            "assessment_note": "",
         },
         {
+            "key": "lighting_control",
             "name": "Lighting Control",
+            "search_gate": False,
             "value_type": "enum",
-            "importance": "high",
-            "comparison_relevant": True,
-            "score_direction": "match_user_preference",
+            "score_direction": "match_preference",
+            "typical_values": ["dimmable", "led", "no light"],
+            "clarifying_question": "What lighting do you need?",
+            "extraction_signals": ["dimmable lights", "dimmable", "dimmer", "lights", "led"],
+            "assessment_note": "",
         },
         {
+            "key": "smart_home_compatibility",
             "name": "Smart Home Compatibility",
+            "search_gate": False,
             "value_type": "enum",
-            "importance": "high",
-            "comparison_relevant": True,
-            "score_direction": "match_user_preference",
+            "score_direction": "match_preference",
+            "typical_values": ["Alexa", "Google Home", "HomeKit"],
+            "clarifying_question": "Do you need smart home compatibility?",
+            "extraction_signals": ["alexa", "google home", "homekit", "smart home", "voice control", "works with"],
+            "assessment_note": "",
         },
         {
+            "key": "control_features",
             "name": "Control Features",
+            "search_gate": False,
             "value_type": "enum",
-            "importance": "medium",
-            "comparison_relevant": True,
-            "score_direction": "match_user_preference",
+            "score_direction": "match_preference",
+            "typical_values": ["remote control", "pull chain", "wall switch"],
+            "clarifying_question": "What control features do you prefer?",
+            "extraction_signals": ["remote control", "remote", "pull chain", "wall control"],
+            "assessment_note": "",
         },
         {
+            "key": "airflow_features",
             "name": "Airflow Features",
+            "search_gate": False,
             "value_type": "enum",
-            "importance": "medium",
-            "comparison_relevant": True,
-            "score_direction": "match_user_preference",
+            "score_direction": "match_preference",
+            "typical_values": ["reverse", "high airflow", "DC motor"],
+            "clarifying_question": "What airflow features matter to you?",
+            "extraction_signals": ["reverse airflow", "reverse", "reversible", "airflow", "dc motor"],
+            "assessment_note": "",
         },
     ],
-    "intake_questions": [
-        {
-            "question": "How quiet does it need to be?",
-            "maps_to_attribute": "Noise level",
-            "priority": "high",
-            "answer_type": "string",
-        },
-        {
-            "question": "What room size does it need to support?",
-            "maps_to_attribute": "Room size",
-            "priority": "high",
-            "answer_type": "range",
-        },
-        {
-            "question": "What mounting style do you need?",
-            "maps_to_attribute": "Mounting style",
-            "priority": "high",
-            "answer_type": "enum",
-        },
-        {
-            "question": "Is this for indoor or outdoor use?",
-            "maps_to_attribute": "Indoor/outdoor use",
-            "priority": "high",
-            "answer_type": "enum",
-        },
-    ],
+    "entity_terms": ["Dimmable lights", "Alexa", "Remote control", "Reverse airflow"],
 }
 
 
 CEILING_FAN_BAD_VALUE_CONTEXT = {
-    "entity_candidates": [
+    "decision_attributes": [
         {
-            "name": "Dimmable lights",
-            "type": "feature",
-            "maps_to_attribute": "Light Kit Included",
-        },
-        {
-            "name": "Color changing LED",
-            "type": "feature",
-            "maps_to_attribute": "Light Kit Included",
-        },
-        {
-            "name": "Alexa",
-            "type": "compatibility_target",
-            "maps_to_attribute": "Control Method",
-        },
-        {
-            "name": "Remote",
-            "type": "control_feature",
-            "maps_to_attribute": "Control Method",
-        },
-        {
-            "name": "Reverse airflow",
-            "type": "airflow_feature",
-            "maps_to_attribute": "Airflow Features",
-        },
-    ],
-    "attribute_schema": [
-        {
+            "key": "ceiling_height",
             "name": "Ceiling Height",
+            "search_gate": True,
             "value_type": "range",
-            "importance": "high",
-            "comparison_relevant": True,
             "score_direction": "must_have",
+            "typical_values": [8, 12],
+            "clarifying_question": "What ceiling height does the fan need to fit?",
+            "extraction_signals": ["ceiling height", "foot ceiling", "feet ceiling", "low ceiling", "high ceiling"],
+            "assessment_note": "",
         },
         {
+            "key": "control_method",
             "name": "Control Method",
+            "search_gate": False,
             "value_type": "enum",
-            "importance": "medium",
-            "comparison_relevant": True,
-            "score_direction": "match_user_preference",
+            "score_direction": "match_preference",
+            "typical_values": ["remote control", "pull chain", "wall switch", "Alexa"],
+            "clarifying_question": "What control method do you prefer?",
+            "extraction_signals": ["remote control", "pull chain", "wall switch", "alexa", "voice control"],
+            "assessment_note": "",
         },
         {
+            "key": "finish",
             "name": "Finish",
+            "search_gate": False,
             "value_type": "enum",
-            "importance": "medium",
-            "comparison_relevant": True,
-            "score_direction": "match_user_preference",
+            "score_direction": "match_preference",
+            "typical_values": ["brushed nickel", "matte black", "bronze", "white"],
+            "clarifying_question": "What finish do you prefer?",
+            "extraction_signals": ["matte black", "brushed nickel", "oil rubbed bronze", "antique brass"],
+            "assessment_note": "",
         },
         {
+            "key": "light_kit_included",
             "name": "Light Kit Included",
+            "search_gate": False,
             "value_type": "enum",
-            "importance": "high",
-            "comparison_relevant": True,
-            "score_direction": "match_user_preference",
+            "score_direction": "match_preference",
+            "typical_values": ["dimmable", "led", "color changing led", "no light"],
+            "clarifying_question": "What light kit do you need?",
+            "extraction_signals": ["dimmable lights", "dimmable", "color changing led", "led", "light kit"],
+            "assessment_note": "",
         },
         {
+            "key": "mounting_style",
             "name": "Mounting Style",
+            "search_gate": False,
             "value_type": "enum",
-            "importance": "high",
-            "comparison_relevant": True,
             "score_direction": "must_have",
+            "typical_values": ["flush mount", "standard downrod", "hugger"],
+            "clarifying_question": "What mounting style do you need?",
+            "extraction_signals": ["flush mount", "low profile", "hugger", "downrod"],
+            "assessment_note": "",
         },
         {
+            "key": "noise_level",
             "name": "Noise Level",
+            "search_gate": False,
             "value_type": "string",
-            "importance": "high",
-            "comparison_relevant": True,
             "score_direction": "lower_is_better",
+            "typical_values": None,
+            "clarifying_question": "How quiet does it need to be?",
+            "extraction_signals": ["quiet", "noisy", "noise", "silent", "loud"],
+            "assessment_note": "",
         },
         {
+            "key": "room_size",
             "name": "Room Size",
+            "search_gate": True,
             "value_type": "range",
-            "importance": "high",
-            "comparison_relevant": True,
             "score_direction": "must_have",
+            "typical_values": [75, 400],
+            "clarifying_question": "What room size does the fan need to support?",
+            "extraction_signals": ["room size", "sq ft", "square feet", "small room", "large room"],
+            "assessment_note": "",
         },
         {
+            "key": "damp_or_wet_rating",
             "name": "Damp or Wet Rating",
+            "search_gate": False,
             "value_type": "enum",
-            "importance": "high",
-            "comparison_relevant": True,
             "score_direction": "must_have",
+            "typical_values": ["indoor/dry", "damp", "wet/outdoor"],
+            "clarifying_question": "Is this for indoor, damp, or outdoor use?",
+            "extraction_signals": ["indoor", "outdoor", "damp", "wet"],
+            "assessment_note": "",
         },
         {
+            "key": "airflow_features",
             "name": "Airflow Features",
+            "search_gate": False,
             "value_type": "enum",
-            "importance": "medium",
-            "comparison_relevant": True,
-            "score_direction": "match_user_preference",
+            "score_direction": "match_preference",
+            "typical_values": ["reverse", "high airflow"],
+            "clarifying_question": "What airflow features matter?",
+            "extraction_signals": ["reverse airflow", "reverse", "reversible", "airflow"],
+            "assessment_note": "",
         },
     ],
-    "intake_questions": [
-        {
-            "question": "What ceiling height does the fan need to fit?",
-            "maps_to_attribute": "Ceiling Height",
-            "priority": "high",
-            "answer_type": "range",
-        },
-        {
-            "question": "What control method do you prefer?",
-            "maps_to_attribute": "Control Method",
-            "priority": "medium",
-            "answer_type": "enum",
-        },
-        {
-            "question": "What room size does the fan need to support?",
-            "maps_to_attribute": "Room Size",
-            "priority": "high",
-            "answer_type": "range",
-        },
-        {
-            "question": "How quiet does it need to be?",
-            "maps_to_attribute": "Noise Level",
-            "priority": "high",
-            "answer_type": "string",
-        },
-    ],
+    "entity_terms": ["Dimmable lights", "Color changing LED", "Remote", "Reverse airflow"],
 }
 
 
 ROUTER_CONTEXT = {
-    "attribute_schema": [
+    "decision_attributes": [
         {
+            "key": "coverage",
             "name": "Coverage",
+            "search_gate": True,
             "value_type": "range",
-            "importance": "high",
+            "score_direction": "higher_is_better",
+            "typical_values": [1000, 5000],
+            "clarifying_question": "What coverage area do you need?",
+            "extraction_signals": ["coverage", "range", "whole home", "whole house", "3-story", "three story"],
+            "assessment_note": "",
         },
         {
+            "key": "budget",
             "name": "Budget",
+            "search_gate": True,
             "value_type": "number",
-            "importance": "high",
+            "unit": "usd",
             "score_direction": "lower_is_better",
+            "typical_values": [50, 400],
+            "clarifying_question": "What is your budget?",
+            "extraction_signals": ["budget", "spend", "cost", "price", "under"],
+            "assessment_note": "",
         },
     ],
-    "intake_questions": [
-        {
-            "question": "What is your budget?",
-            "maps_to_attribute": "Budget",
-            "priority": "high",
-            "answer_type": "number",
-        },
-    ],
+    "entity_terms": [],
 }
 
 
 CEILING_FAN_MOUNTING_CONTEXT = {
-    "entity_candidates": [
+    "decision_attributes": [
         {
-            "name": "Flush mount",
-            "type": "installation_constraint",
-            "source_field": "common_entities",
-        },
-        {
-            "name": "Standard downrod",
-            "type": "installation_constraint",
-            "source_field": "common_entities",
-        },
-        {
-            "name": "Sloped ceiling mount",
-            "type": "installation_constraint",
-            "source_field": "common_entities",
-        },
-    ],
-    "attribute_schema": [
-        {
+            "key": "mounting_type",
             "name": "Mounting Type",
+            "search_gate": True,
             "value_type": "enum",
-            "importance": "high",
-            "comparison_relevant": True,
             "score_direction": "must_have",
+            "typical_values": ["Flush mount", "Standard downrod", "Sloped ceiling mount"],
+            "clarifying_question": "What mounting type do you need?",
+            "extraction_signals": ["flush mount", "low profile", "sloped ceiling", "standard downrod", "hugger"],
+            "assessment_note": "",
         },
         {
+            "key": "budget",
             "name": "Budget",
+            "search_gate": True,
             "value_type": "number",
-            "importance": "high",
-            "comparison_relevant": True,
+            "unit": "usd",
             "score_direction": "lower_is_better",
+            "typical_values": [50, 500],
+            "clarifying_question": "What is your budget?",
+            "extraction_signals": ["budget", "spend", "cost", "price", "under"],
+            "assessment_note": "",
         },
         {
+            "key": "style",
             "name": "Style",
+            "search_gate": False,
             "value_type": "enum",
-            "importance": "medium",
-            "comparison_relevant": True,
+            "score_direction": "match_preference",
+            "typical_values": ["modern", "traditional", "industrial"],
+            "clarifying_question": "What style do you prefer?",
+            "extraction_signals": ["style", "design", "look", "aesthetic"],
+            "assessment_note": "",
         },
     ],
-    "intake_questions": [
-        {
-            "question": "What mounting type do you need?",
-            "maps_to_attribute": "Mounting Type",
-            "priority": "high",
-            "answer_type": "enum",
-        },
-        {
-            "question": "What is your budget?",
-            "maps_to_attribute": "Budget",
-            "priority": "high",
-            "answer_type": "number",
-        },
-        {
-            "question": "What style do you prefer?",
-            "maps_to_attribute": "Style",
-            "priority": "medium",
-            "answer_type": "enum",
-        },
-    ],
+    "entity_terms": ["Flush mount", "Standard downrod", "Sloped ceiling mount"],
 }
 
 
 ROUTER_BAND_CONTEXT = {
-    "entity_candidates": [
+    "decision_attributes": [
         {
-            "name": "Dual-band router",
-            "type": "product_type",
-            "source_field": "common_entities",
-        },
-        {
-            "name": "Tri-band mesh system",
-            "type": "product_type",
-            "source_field": "common_entities",
-        },
-        {
-            "name": "6 GHz band",
-            "type": "feature",
-            "source_field": "common_entities",
-        },
-    ],
-    "attribute_schema": [
-        {
+            "key": "band_type",
             "name": "Band Type",
+            "search_gate": True,
             "value_type": "enum",
-            "importance": "high",
-            "comparison_relevant": True,
             "score_direction": "must_have",
+            "typical_values": None,
+            "clarifying_question": "What band type do you need?",
+            "extraction_signals": ["dual-band", "tri-band", "6 ghz", "wifi 6", "wi-fi 6e", "mesh system"],
+            "assessment_note": "",
         },
         {
+            "key": "budget",
             "name": "Budget",
+            "search_gate": True,
             "value_type": "number",
-            "importance": "high",
-            "comparison_relevant": True,
+            "unit": "usd",
             "score_direction": "lower_is_better",
+            "typical_values": [50, 400],
+            "clarifying_question": "What is your budget?",
+            "extraction_signals": ["budget", "spend", "cost", "price", "under"],
+            "assessment_note": "",
         },
     ],
-    "intake_questions": [
-        {
-            "question": "What band type do you need?",
-            "maps_to_attribute": "Band Type",
-            "priority": "high",
-            "answer_type": "enum",
-        }
-    ],
+    "entity_terms": ["Dual-band router", "Tri-band mesh system", "6 GHz band"],
 }
 
 
 TV_CONTEXT = {
-    "entity_candidates": [
+    "decision_attributes": [
         {
-            "name": "PS5",
-            "type": "gaming_console",
-            "maps_to_attribute": "Gaming Compatibility",
-        },
-        {
-            "name": "HDMI 2.1",
-            "type": "gaming_feature",
-            "maps_to_attribute": "Gaming Compatibility",
-        },
-        {
-            "name": "glare",
-            "type": "viewing_condition",
-            "maps_to_attribute": "Glare Handling",
-        },
-    ],
-    "attribute_schema": [
-        {
+            "key": "brightness",
             "name": "Brightness",
+            "search_gate": False,
             "value_type": "string",
-            "importance": "high",
-            "comparison_relevant": True,
             "score_direction": "higher_is_better",
+            "typical_values": None,
+            "clarifying_question": "Will you use it in a bright room?",
+            "extraction_signals": ["bright room", "brightness", "nits", "sunny", "hdr"],
+            "assessment_note": "",
         },
         {
+            "key": "glare_handling",
             "name": "Glare Handling",
+            "search_gate": False,
             "value_type": "string",
-            "importance": "high",
-            "comparison_relevant": True,
             "score_direction": "higher_is_better",
+            "typical_values": None,
+            "clarifying_question": "Do you need anti-glare?",
+            "extraction_signals": ["glare", "anti-glare", "matte screen", "glare handling"],
+            "assessment_note": "",
         },
         {
+            "key": "gaming_compatibility",
             "name": "Gaming Compatibility",
+            "search_gate": False,
             "value_type": "enum",
-            "importance": "high",
-            "comparison_relevant": True,
             "score_direction": "must_have",
+            "typical_values": ["PS5", "Xbox", "HDMI 2.1", "VRR", "none"],
+            "clarifying_question": "Do you need gaming console compatibility?",
+            "extraction_signals": ["ps5", "xbox", "hdmi 2.1", "gaming", "game mode", "vrr"],
+            "assessment_note": "",
         },
     ],
-    "intake_questions": [
-        {
-            "question": "Will you use it in a bright room?",
-            "maps_to_attribute": "Brightness",
-            "priority": "high",
-            "answer_type": "string",
-        },
-        {
-            "question": "Do you need gaming console compatibility such as PS5, Xbox, or HDMI 2.1?",
-            "maps_to_attribute": "Gaming Compatibility",
-            "priority": "high",
-            "answer_type": "enum",
-        },
-    ],
+    "entity_terms": ["PS5", "HDMI 2.1", "glare"],
 }
 
 
 BIKE_HELMET_CONTEXT = {
-    "entity_candidates": [
+    "decision_attributes": [
         {
-            "name": "MIPS",
-            "type": "rotational impact protection",
-            "maps_to_attribute": "Rotational Impact Protection",
-        },
-        {
-            "name": "hot weather",
-            "type": "riding_condition",
-            "maps_to_attribute": "Ventilation",
-        },
-        {
-            "name": "large head",
-            "type": "fit_need",
-            "maps_to_attribute": "Fit Size Range",
-        },
-    ],
-    "attribute_schema": [
-        {
+            "key": "safety_certification",
             "name": "Safety Certification",
+            "search_gate": True,
             "value_type": "enum",
-            "importance": "high",
-            "comparison_relevant": True,
             "score_direction": "must_have",
+            "typical_values": ["CPSC", "CE", "MIPS certified"],
+            "clarifying_question": "What safety certification do you need?",
+            "extraction_signals": ["cpsc", "ce certified", "certified", "safety certified"],
+            "assessment_note": "",
         },
         {
+            "key": "rotational_impact_protection",
             "name": "Rotational Impact Protection",
+            "search_gate": False,
             "value_type": "enum",
-            "importance": "high",
-            "comparison_relevant": True,
-            "score_direction": "match_user_preference",
+            "score_direction": "match_preference",
+            "typical_values": ["MIPS", "SPIN", "WaveCel", "none"],
+            "clarifying_question": "Do you want rotational impact protection such as MIPS?",
+            "extraction_signals": ["mips", "spin", "wavecel", "rotational", "impact protection"],
+            "assessment_note": "",
         },
         {
+            "key": "fit_size_range",
             "name": "Fit Size Range",
+            "search_gate": False,
             "value_type": "range",
-            "importance": "high",
-            "comparison_relevant": True,
             "score_direction": "must_have",
+            "typical_values": [50, 62],
+            "clarifying_question": "What head size or fit range do you need?",
+            "extraction_signals": ["head is large", "large head", "small head", "head size", "fit size"],
+            "assessment_note": "",
         },
         {
+            "key": "ventilation",
             "name": "Ventilation",
+            "search_gate": False,
             "value_type": "string",
-            "importance": "medium",
-            "comparison_relevant": True,
             "score_direction": "higher_is_better",
+            "typical_values": None,
+            "clarifying_question": "What ventilation do you need?",
+            "extraction_signals": ["hot weather", "ventilation", "vents", "airflow", "breathable"],
+            "assessment_note": "",
         },
     ],
-    "intake_questions": [
-        {
-            "question": "Do you want rotational impact protection such as MIPS?",
-            "maps_to_attribute": "Rotational Impact Protection",
-            "priority": "high",
-            "answer_type": "enum",
-        },
-        {
-            "question": "What head size or fit range do you need?",
-            "maps_to_attribute": "Fit Size Range",
-            "priority": "high",
-            "answer_type": "string",
-        },
-    ],
+    "entity_terms": ["MIPS", "hot weather", "large head"],
 }
 
 
 PHASED_CLARIFICATION_CONTEXT = {
-    "attribute_schema": [
+    "decision_attributes": [
         {
+            "key": "budget",
             "name": "Budget",
+            "search_gate": True,
             "value_type": "number",
-            "importance": "high",
-            "comparison_relevant": True,
+            "unit": "usd",
             "score_direction": "lower_is_better",
+            "typical_values": [50, 500],
+            "clarifying_question": "What is your budget?",
+            "extraction_signals": ["budget", "spend", "cost", "price", "under"],
+            "assessment_note": "",
         },
         {
+            "key": "mounting_type",
             "name": "Mounting Type",
+            "search_gate": True,
             "value_type": "enum",
-            "importance": "high",
-            "comparison_relevant": True,
             "score_direction": "must_have",
+            "typical_values": ["flush mount", "standard downrod", "hugger"],
+            "clarifying_question": "What mounting type do you need?",
+            "extraction_signals": ["flush mount", "low profile", "hugger", "downrod", "sloped ceiling"],
+            "assessment_note": "",
         },
         {
+            "key": "style",
             "name": "Style",
+            "search_gate": False,
             "value_type": "enum",
-            "importance": "high",
-            "comparison_relevant": True,
-            "score_direction": "match_user_preference",
+            "score_direction": "match_preference",
+            "typical_values": ["modern", "traditional", "industrial"],
+            "clarifying_question": "What style do you prefer?",
+            "extraction_signals": ["style", "design", "look", "aesthetic"],
+            "assessment_note": "",
         },
         {
+            "key": "noise_level",
             "name": "Noise Level",
+            "search_gate": False,
             "value_type": "string",
-            "importance": "medium",
-            "comparison_relevant": True,
             "score_direction": "lower_is_better",
+            "typical_values": None,
+            "clarifying_question": "How quiet does it need to be?",
+            "extraction_signals": ["quiet", "noisy", "noise", "silent"],
+            "assessment_note": "",
         },
     ],
-    "intake_questions": [
-        {
-            "question": "What style do you prefer?",
-            "maps_to_attribute": "Style",
-            "priority": "high",
-            "answer_type": "enum",
-        },
-    ],
-    "decision_axes": [
-        {
-            "name": "Quietness vs price",
-            "positive_direction": "lower noise",
-            "tradeoff_against": "price",
-            "derived_from": "comparison_dimensions",
-        }
-    ],
+    "entity_terms": [],
 }
 
 
 CEILING_FAN_OPTIONAL_STYLE_CONTEXT = {
-    "attribute_schema": [
+    "decision_attributes": [
         {
+            "key": "budget",
             "name": "Budget",
+            "search_gate": True,
             "value_type": "number",
-            "importance": "high",
-            "comparison_relevant": True,
+            "unit": "usd",
             "score_direction": "lower_is_better",
+            "typical_values": [50, 500],
+            "clarifying_question": "What is your budget?",
+            "extraction_signals": ["budget", "spend", "cost", "price", "under"],
+            "assessment_note": "",
         },
         {
+            "key": "style",
             "name": "Style",
+            "search_gate": False,
             "value_type": "enum",
-            "importance": "medium",
-            "comparison_relevant": True,
+            "score_direction": "match_preference",
+            "typical_values": ["modern", "traditional", "industrial"],
+            "clarifying_question": "What style do you prefer?",
+            "extraction_signals": ["style", "design", "look", "aesthetic"],
+            "assessment_note": "",
         },
     ],
-    "intake_questions": [
-        {
-            "question": "What is your budget?",
-            "maps_to_attribute": "Budget",
-            "priority": "high",
-            "answer_type": "number",
-        },
-        {
-            "question": "What style do you prefer?",
-            "maps_to_attribute": "Style",
-            "priority": "medium",
-            "answer_type": "enum",
-        },
-    ],
+    "entity_terms": [],
 }
 
 
@@ -972,7 +872,7 @@ class RequirementMemoryTests(unittest.TestCase):
 
         self.assertEqual(by_name["Rotational Impact Protection"].value, "MIPS")
         self.assertEqual(by_name["Ventilation"].value, "hot weather")
-        self.assertEqual(by_name["Fit Size Range"].value, "large head")
+        self.assertIn("large", by_name["Fit Size Range"].value.lower())
         self.assertNotIn("Rotational Impact Protection", missing)
         self.assertNotIn("Ventilation", missing)
         self.assertIn("Fit Size Range", missing)
@@ -1002,14 +902,20 @@ class RequirementMemoryTests(unittest.TestCase):
         os.environ["LLM_PROVIDER"] = "openai-compatible"
         fake_provider = FakeRequirementProvider()
         context = {
-            "attribute_schema": [
+            "decision_attributes": [
                 {
+                    "key": "ease_of_use",
                     "name": "Ease of Use",
+                    "search_gate": False,
                     "value_type": "string",
-                    "importance": "high",
+                    "score_direction": "higher_is_better",
+                    "typical_values": None,
+                    "clarifying_question": "How easy to use does it need to be?",
+                    "extraction_signals": ["easy to use", "simple", "user-friendly", "intuitive"],
+                    "assessment_note": "",
                 }
             ],
-            "intake_questions": [],
+            "entity_terms": [],
         }
 
         with patch("app.requirement_memory.profile.get_llm_provider", return_value=fake_provider):
@@ -1155,7 +1061,7 @@ class RequirementMemoryTests(unittest.TestCase):
             ["Budget", "Mounting Type"],
         )
         self.assertTrue(
-            all(question.reason == "missing_absolute_minimum_critical_requirement" for question in profile.followUpQuestions)
+            all(question.reason == "missing_search_gate_requirement" for question in profile.followUpQuestions)
         )
 
     def test_after_two_prompts_uses_mapped_intake_and_decision_axis_questions(self):
@@ -1171,13 +1077,16 @@ class RequirementMemoryTests(unittest.TestCase):
 
         self.assertEqual(
             [question.mapsToAttribute for question in profile.followUpQuestions],
-            ["Style", "Noise Level"],
+            ["Noise Level", "Style"],
         )
-        self.assertEqual(profile.followUpQuestions[0].question, "What style do you prefer?")
-        self.assertEqual(profile.followUpQuestions[0].reason, "missing_intake_attribute")
-        self.assertEqual(profile.followUpQuestions[1].reason, "missing_decision_axis_tradeoff")
+        self.assertEqual(profile.followUpQuestions[0].question, "How quiet does it need to be?")
+        self.assertEqual(profile.followUpQuestions[0].reason, "missing_attribute")
+        self.assertEqual(profile.followUpQuestions[1].reason, "missing_attribute")
 
-    def test_after_five_prompts_no_more_followups_are_required(self):
+    def test_after_five_prompts_unresolved_attributes_still_generate_questions(self):
+        # The count-5 cap is removed — search_gate controls blocking, not the count.
+        # With no requirements specified, all attributes are still unresolved and
+        # follow-up questions should continue to be generated.
         profile = update_user_requirement_profile(
             None,
             category_name="Ceiling fan",
@@ -1188,7 +1097,9 @@ class RequirementMemoryTests(unittest.TestCase):
             updated_at="2026-06-18T20:10:00+00:00",
         )
 
-        self.assertEqual(profile.followUpQuestions, [])
+        self.assertGreater(len(profile.followUpQuestions), 0)
+        gate_reasons = {q.reason for q in profile.followUpQuestions}
+        self.assertIn("missing_search_gate_requirement", gate_reasons)
 
     def test_research_becomes_available_after_fifth_clarification_prompt(self):
         client = TestClient(app)
@@ -1218,7 +1129,12 @@ class RequirementMemoryTests(unittest.TestCase):
             latest_body = response.json()
 
         self.assertTrue(latest_body["ready_to_search"])
-        self.assertIn("You can move to research now", latest_body["agent_message"])
+        # Once ready, the agent acknowledges and offers to search — not a hard stop.
+        message_lower = latest_body["agent_message"].lower()
+        self.assertTrue(
+            "search now" in message_lower or "got it" in message_lower,
+            f"Unexpected agent message: {latest_body['agent_message']}",
+        )
 
     def test_user_can_ask_about_attribute_options_without_setting_requirement(self):
         client = TestClient(app)
@@ -1321,7 +1237,7 @@ class RequirementMemoryTests(unittest.TestCase):
 
         by_name = {item.attributeName: item for item in profile.requirements}
 
-        self.assertIn("extract the stated requirement information first", fake_provider.prompt)
+        self.assertIn("do not create a requirement for what they only asked about", fake_provider.prompt)
         self.assertEqual(by_name["Budget"].value, "under $250")
         self.assertNotIn("Mounting Type", by_name)
 

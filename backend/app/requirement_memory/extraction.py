@@ -19,7 +19,6 @@ from app.requirement_memory.attributes import (
     build_attribute_matching_hints,
     canonical_attribute,
     attribute_by_name,
-    attribute_synonyms,
     schema_allows_attribute,
 )
 
@@ -256,35 +255,30 @@ def extract_entity_backed_requirements(
         if not schema_allows_attribute(attribute_name, schema_names):
             continue
 
-        for entity_name in hint.get("entities", []):
-            entity = str(entity_name).strip()
-            if not entity:
+        attr_def = attribute_by_name(attribute_name, attributes)
+        importance = "high" if attr_def.get("search_gate") else "medium"
+        for signal in hint.get("extractionSignals", []):
+            signal_str = str(signal).strip()
+            if not signal_str or len(signal_str) < 3:
                 continue
-            index = lowered.find(entity.lower())
+            index = lowered.find(signal_str.lower())
             if index >= 0:
-                evidence = message[index: index + len(entity)]
-                value = evidence
-            elif tokens(entity).issubset(tokens(message)):
-                evidence = entity
-                value = entity
-            else:
-                continue
-
-            results.append(
-                make_requirement(
-                    attribute_name=attribute_name,
-                    status="specified",
-                    value=value,
-                    normalized_operator="equals",
-                    normalized_value=value,
-                    importance=str(attribute_by_name(attribute_name, attributes).get("importance", "high")),
-                    source="explicit_user_statement",
-                    confidence=0.88,
-                    evidence=evidence,
-                    timestamp=timestamp,
+                evidence = message[index: index + len(signal_str)]
+                results.append(
+                    make_requirement(
+                        attribute_name=attribute_name,
+                        status="specified",
+                        value=evidence,
+                        normalized_operator="equals",
+                        normalized_value=evidence,
+                        importance=importance,
+                        source="explicit_user_statement",
+                        confidence=0.85,
+                        evidence=evidence,
+                        timestamp=timestamp,
+                    )
                 )
-            )
-            break  # one entity match per attribute is enough
+                break  # one signal match per attribute is enough
 
     return results
 
@@ -312,12 +306,13 @@ def extract_schema_aligned_phrases(
         evidence = first_schema_phrase_match(message, attribute, category_context)
         if evidence:
             value = first_attribute_value(message, name) if name.lower() in lowered else evidence
+            importance = "high" if attribute.get("search_gate") else "medium"
             results.append(
                 make_requirement(
                     attribute_name=name,
                     status="specified",
                     value=value,
-                    importance=attribute.get("importance", "medium"),
+                    importance=importance,
                     source="explicit_user_statement",
                     confidence=0.78,
                     evidence=value,
@@ -329,11 +324,13 @@ def extract_schema_aligned_phrases(
 
 
 def first_schema_phrase_match(message: str, attribute: dict, category_context: dict | None) -> str | None:
-    """Return the first synonym phrase for this attribute found in the message."""
-    name = str(attribute.get("name", "")).strip()
+    """Return the first extraction signal phrase for this attribute found in the message."""
     lowered = message.lower()
-    phrases = sorted(attribute_synonyms(name, category_context), key=len, reverse=True)
-    for phrase in phrases:
+    name = str(attribute.get("name", "")).strip()
+    signals: list[str] = list(attribute.get("extraction_signals", []))
+    if name and name.lower() not in {s.lower() for s in signals}:
+        signals.append(name)
+    for phrase in sorted(signals, key=len, reverse=True):
         if len(phrase) < 3:
             continue
         index = lowered.find(phrase.lower())

@@ -1,0 +1,416 @@
+{
+  "coffee-maker": {
+    "category": "Coffee maker",
+    "normalized_category_key": "coffee-maker",
+    "category_schema": {
+      "category": "Coffee Maker",
+      "summary": "The buyer needs help choosing coffee maker for single person on the go.",
+      "decision_attributes": [
+        {
+          "key": "budget",
+          "name": "Budget",
+          "search_gate": true,
+          "value_type": "number",
+          "unit": "usd",
+          "score_direction": "lower_is_better",
+          "typical_values": [
+            100,
+            1000
+          ],
+          "clarifying_question": "What's your budget for this purchase?",
+          "extraction_signals": [
+            "budget",
+            "spend",
+            "cost",
+            "price",
+            "how much",
+            "dollars",
+            "afford"
+          ],
+          "assessment_note": "Exclude products above budget; prefer options toward the lower end."
+        },
+        {
+          "key": "fit_for_use_case",
+          "name": "Fit for use case",
+          "search_gate": true,
+          "value_type": "string",
+          "unit": null,
+          "score_direction": "match_preference",
+          "typical_values": null,
+          "clarifying_question": "What will you mainly use the coffee maker for, and in what setting?",
+          "extraction_signals": [
+            "use",
+            "need",
+            "situation",
+            "for",
+            "purpose",
+            "mainly",
+            "primarily"
+          ],
+          "assessment_note": "Match product positioning to the user's stated use case and setting."
+        },
+        {
+          "key": "ease_of_use",
+          "name": "Ease of use",
+          "search_gate": false,
+          "value_type": "enum",
+          "unit": null,
+          "score_direction": "match_preference",
+          "typical_values": [
+            "simple controls",
+            "moderate setup",
+            "feature-rich"
+          ],
+          "clarifying_question": "How important is ease of setup and daily use to you?",
+          "extraction_signals": [
+            "easy",
+            "simple",
+            "setup",
+            "intuitive",
+            "controls",
+            "complicated",
+            "tech-savvy"
+          ],
+          "assessment_note": "Prefer highly-rated ease-of-use products for users who value simplicity."
+        },
+        {
+          "key": "reliability",
+          "name": "Reliability",
+          "search_gate": false,
+          "value_type": "enum",
+          "unit": null,
+          "score_direction": "higher_is_better",
+          "typical_values": [
+            "highly rated",
+            "mixed reviews",
+            "premium warranty"
+          ],
+          "clarifying_question": "How important is long-term reliability and warranty support?",
+          "extraction_signals": [
+            "reliable",
+            "last",
+            "durable",
+            "break",
+            "warranty",
+            "quality",
+            "reviews"
+          ],
+          "assessment_note": "Prioritize products with strong reliability track records."
+        }
+      ],
+      "entity_terms": [
+        "entry-level option",
+        "mid-range option",
+        "premium option"
+      ],
+      "risks": [
+        "Compatibility issues that prevent the coffee maker from working in your situation",
+        "Poor build quality at budget price points that leads to early failure"
+      ],
+      "confidence": "low"
+    },
+    "created_at": "2026-06-19T16:27:50.611361+00:00",
+    "updated_at": "2026-06-19T16:27:50.611361+00:00",
+    "model_metadata": {
+      "provider": "local",
+      "model": "deterministic-category-schema",
+      "prompt_hash": "f71a331b1b154a8f431947af99dd43fd6974b63228d5cacbab01eeb24c1f1398"
+    }
+  },
+  "french-door-refrigerators": {
+    "category": "French Door Refrigerators",
+    "normalized_category_key": "french-door-refrigerators",
+    "category_schema": {
+      "category": "French Door Refrigerators",
+      "summary": "Buyer needs a refrigerator that fits the kitchen space, storage needs, and feature preferences while staying within budget.",
+      "decision_attributes": [
+        {
+          "key": "budget",
+          "name": "Budget",
+          "search_gate": true,
+          "value_type": "number",
+          "unit": "usd",
+          "score_direction": "lower_is_better",
+          "typical_values": [
+            500,
+            5000
+          ],
+          "clarifying_question": "What is your budget for the refrigerator?",
+          "extraction_signals": [
+            "under $2,000",
+            "budget is around 2500",
+            "cheap",
+            "mid-range",
+            "premium",
+            "don't want to spend too much",
+            "on sale",
+            "price cap",
+            "under budget",
+            "around a thousand"
+          ],
+          "assessment_note": "Products closer to or below the user's budget score better, and options above budget may be excluded."
+        },
+        {
+          "key": "refrigerator_width",
+          "name": "Refrigerator Width",
+          "search_gate": true,
+          "value_type": "number",
+          "unit": "inches",
+          "score_direction": "must_have",
+          "typical_values": [
+            30,
+            48
+          ],
+          "clarifying_question": "How much width space do you have for the refrigerator?",
+          "extraction_signals": [
+            "30-inch space",
+            "fits a 36 inch opening",
+            "counter depth opening",
+            "narrow kitchen",
+            "space between cabinets",
+            "width limit",
+            "opening is 35 inches",
+            "fridge has to fit",
+            "built-in space",
+            "measured the opening"
+          ],
+          "assessment_note": "A product must fit the available width or it should be filtered out."
+        },
+        {
+          "key": "capacity",
+          "name": "Capacity",
+          "search_gate": false,
+          "value_type": "number",
+          "unit": "cu_ft",
+          "score_direction": "higher_is_better",
+          "typical_values": [
+            18,
+            36
+          ],
+          "clarifying_question": "How much total refrigerator capacity do you want?",
+          "extraction_signals": [
+            "need more fridge space",
+            "family of five",
+            "lots of groceries",
+            "big freezer and fridge",
+            "extra storage",
+            "small household",
+            "tons of room",
+            "weekend meal prep",
+            "bulk shopping",
+            "large capacity"
+          ],
+          "assessment_note": "Higher usable capacity scores better when the user wants more storage, but should still fit the household and space."
+        },
+        {
+          "key": "counter_depth",
+          "name": "Counter Depth",
+          "search_gate": false,
+          "value_type": "boolean",
+          "unit": null,
+          "score_direction": "must_have",
+          "typical_values": null,
+          "clarifying_question": "Do you want a counter-depth refrigerator that sits more flush with cabinets?",
+          "extraction_signals": [
+            "counter depth",
+            "flush with cabinets",
+            "built-in look",
+            "shallower fridge",
+            "not sticking out",
+            "sleeker kitchen",
+            "less deep",
+            "protruding too far",
+            "cabinet depth",
+            "integrated look"
+          ],
+          "assessment_note": "Counter-depth models score as a match when the user wants a flush, built-in appearance."
+        },
+        {
+          "key": "ice_and_water_dispenser",
+          "name": "Ice And Water Dispenser",
+          "search_gate": false,
+          "value_type": "boolean",
+          "unit": null,
+          "score_direction": "must_have",
+          "typical_values": null,
+          "clarifying_question": "Do you want an external ice and water dispenser?",
+          "extraction_signals": [
+            "water dispenser",
+            "ice maker in the door",
+            "filtered water on the front",
+            "crushed ice",
+            "cubed ice",
+            "through-the-door water",
+            "don't want to open the fridge for water",
+            "family uses ice a lot",
+            "dispenser on the outside",
+            "easy water access"
+          ],
+          "assessment_note": "Products with the requested dispenser feature score higher; if the user does not want it, models without it score better."
+        },
+        {
+          "key": "finish_color",
+          "name": "Finish Color",
+          "search_gate": false,
+          "value_type": "enum",
+          "unit": null,
+          "score_direction": "match_preference",
+          "typical_values": [
+            "stainless steel",
+            "black stainless steel",
+            "black",
+            "white",
+            "panel ready",
+            "other"
+          ],
+          "clarifying_question": "What finish or color do you want?",
+          "extraction_signals": [
+            "stainless steel",
+            "black fridge",
+            "white appliance",
+            "panel ready",
+            "match my cabinets",
+            "smudge-proof finish",
+            "matte black",
+            "modern look",
+            "not stainless",
+            "kitchen color"
+          ],
+          "assessment_note": "Products score best when their finish matches the user's stated style or color preference."
+        },
+        {
+          "key": "smart_features",
+          "name": "Smart Features",
+          "search_gate": false,
+          "value_type": "boolean",
+          "unit": null,
+          "score_direction": "must_have",
+          "typical_values": null,
+          "clarifying_question": "Do you want smart features like app alerts or remote control?",
+          "extraction_signals": [
+            "wifi fridge",
+            "app alerts",
+            "smart fridge",
+            "connects to my phone",
+            "remote control",
+            "door left open alert",
+            "temperature notifications",
+            "works with my app",
+            "connected appliance",
+            "tech features"
+          ],
+          "assessment_note": "Products with the desired connected features score higher, while basic models score better if the user does not want smart functions."
+        },
+        {
+          "key": "noise_level",
+          "name": "Noise Level",
+          "search_gate": false,
+          "value_type": "number",
+          "unit": "dB",
+          "score_direction": "lower_is_better",
+          "typical_values": [
+            35,
+            55
+          ],
+          "clarifying_question": "Is quiet operation important for your kitchen or open floor plan?",
+          "extraction_signals": [
+            "quiet fridge",
+            "noisy compressor",
+            "open floor plan",
+            "can hear it running",
+            "silent kitchen",
+            "loud humming",
+            "doesn't rattle",
+            "bedroom nearby",
+            "peaceful",
+            "noise matters"
+          ],
+          "assessment_note": "Lower decibel ratings score better, especially for open-concept homes or noise-sensitive buyers."
+        },
+        {
+          "key": "energy_efficiency",
+          "name": "Energy Efficiency",
+          "search_gate": false,
+          "value_type": "enum",
+          "unit": null,
+          "score_direction": "higher_is_better",
+          "typical_values": [
+            "standard",
+            "energy star",
+            "high efficiency"
+          ],
+          "clarifying_question": "How important is energy efficiency to you?",
+          "extraction_signals": [
+            "energy star",
+            "lower electric bill",
+            "efficient fridge",
+            "save on power",
+            "eco-friendly",
+            "uses less electricity",
+            "running cost",
+            "green appliance",
+            "energy saving",
+            "power usage"
+          ],
+          "assessment_note": "More efficient models score better when the user wants lower operating cost or reduced energy use."
+        },
+        {
+          "key": "ice_maker_type",
+          "name": "Ice Maker Type",
+          "search_gate": false,
+          "value_type": "enum",
+          "unit": null,
+          "score_direction": "match_preference",
+          "typical_values": [
+            "none",
+            "internal ice maker",
+            "door ice maker",
+            "dual ice maker"
+          ],
+          "clarifying_question": "What kind of ice maker setup do you want?",
+          "extraction_signals": [
+            "ice maker inside",
+            "ice in the door",
+            "dual ice",
+            "no ice maker",
+            "automatic ice",
+            "extra ice",
+            "built-in ice maker",
+            "want more ice",
+            "ice production",
+            "ice setup"
+          ],
+          "assessment_note": "Products score best when their ice maker configuration matches the user's preference for convenience and ice output."
+        }
+      ],
+      "entity_terms": [
+        "counter-depth",
+        "standard-depth",
+        "built-in look",
+        "French door",
+        "bottom freezer",
+        "four-door",
+        "three-door",
+        "smart refrigerator",
+        "panel-ready",
+        "dual ice maker"
+      ],
+      "risks": [
+        "Measure the opening carefully, including door swing, hinges, and clearance for handles.",
+        "Counter-depth models often have less usable storage than standard-depth models of the same width.",
+        "External water and ice dispensers can reduce interior space and may require plumbing.",
+        "Some finishes show fingerprints and smudges more than others.",
+        "Delivery and installation can be difficult in tight kitchens, narrow hallways, or stairs."
+      ],
+      "confidence": "high"
+    },
+    "created_at": "2026-06-19T16:29:43.254849+00:00",
+    "updated_at": "2026-06-19T16:29:43.254849+00:00",
+    "model_metadata": {
+      "provider": "openai-compatible",
+      "model": "gpt-5.4-mini",
+      "base_url": "https://api.openai.com/v1/chat/completions",
+      "prompt_hash": "320a3289fa67db38cc5ca991d9b39aa2f74ed9dd2cf608261a7e2142de56e5ff"
+    }
+  }
+}

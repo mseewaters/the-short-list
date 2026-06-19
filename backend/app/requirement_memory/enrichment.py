@@ -24,6 +24,10 @@ def enrich_requirements_for_scoring(
         normalized_value = requirement.normalizedValue
         if normalized_value is None and requirement.value is not None:
             normalized_value = infer_normalized_value(requirement.value, operator)
+        elif isinstance(normalized_value, str):
+            # Coerce string-encoded numbers ("36", "$1500") to their native Python type
+            # so needs_more_specification doesn't incorrectly flag them as unresolved.
+            normalized_value = infer_normalized_value(normalized_value, operator)
         unit = requirement.unit or attribute.get("unit") or infer_unit_from_requirement(requirement)
         hardness = infer_hardness(requirement, attribute)
         scoring_function = infer_scoring_function(requirement, attribute, operator)

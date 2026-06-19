@@ -1,8 +1,7 @@
 """Follow-up question generation for the requirement clarification phase.
 
-Decides which attributes to ask about next, based on what the user has already
-told us, which phase of the conversation we're in, and what the category schema
-says is important.
+Decides which attributes to ask about next, based on what the user has told us,
+the conversation phase, and which attributes are search-gated in the category schema.
 """
 
 from app.schemas import FollowUpQuestion, UserRequirement
@@ -26,31 +25,28 @@ def build_follow_up_questions(
 ) -> list[FollowUpQuestion]:
     """Return up to 5 follow-up questions appropriate for the current prompt count.
 
-    Phase 0-1 (prompt_count < 2): critical attributes only.
-    Phase 2-4: intake questions then decision-axis tradeoffs.
-    Phase 5+: no more questions; the user can proceed to search.
+    Phase 0-1 (prompt_count < 2): search_gate attributes only.
+    Phase 2+: all unresolved attributes, search_gate first. No upper cap —
+    search_gate controls what actually blocks; optional questions are surfaced
+    for as long as unresolved attributes remain.
     """
     attributes = extract_attribute_schema(category_context)
-    intake_questions = category_context.get("intake_questions", []) if category_context else []
     known = known_attribute_names(requirements, attributes, category_context)
     questions: list[FollowUpQuestion] = []
-    queued_names: set[str] = set()
-
-    if clarification_prompt_count >= 5:
-        return []
+    queued_keys: set[str] = set()
 
     # --- Vague requirements that need specification ---
     for requirement in requirements:
         if not requirement.needsMoreSpecification or not requirement.specificationQuestion:
             continue
-        attribute_name = requirement.attributeName
-        if attribute_name.lower() in queued_names:
+        attr_key = canonical_attribute_key(requirement.attributeName, attributes, category_context)
+        if attr_key in queued_keys:
             continue
-        queued_names.add(attribute_name.lower())
+        queued_keys.add(attr_key)
         questions.append(
             FollowUpQuestion(
                 question=requirement.specificationQuestion,
-                mapsToAttribute=attribute_name,
+                mapsToAttribute=requirement.attributeName,
                 priority=requirement.importance,
                 reason="requirement_needs_more_specification_for_scoring",
             )
@@ -58,54 +54,45 @@ def build_follow_up_questions(
         if len(questions) >= 5:
             return questions
 
-    # --- Early phase: critical attributes only ---
     if clarification_prompt_count < 2:
-        for attribute in critical_attributes(attributes):
-            attribute_name = str(attribute.get("name", "")).strip()
-            attribute_key = canonical_attribute_key(attribute_name, attributes, category_context)
-            if not should_queue_attribute(attribute_name, known, queued_names, attributes, category_context):
+        # --- Early phase: search_gate attributes only ---
+        for attribute in search_gate_attributes(attributes):
+            attr_name = str(attribute.get("name", "")).strip()
+            attr_key = canonical_attribute_key(attr_name, attributes, category_context)
+            if not should_queue_attribute(attr_key, known, queued_keys):
                 continue
-            queued_names.add(attribute_key)
+            queued_keys.add(attr_key)
+            question_text = attribute.get("clarifying_question") or f"What do you need for {attr_name}?"
             questions.append(
                 FollowUpQuestion(
-                    question=f"What do you need for {attribute_name}?",
-                    mapsToAttribute=attribute_name,
-                    priority=str(attribute.get("importance", "critical")),
-                    reason="missing_absolute_minimum_critical_requirement",
+                    question=question_text,
+                    mapsToAttribute=attr_name,
+                    priority="high",
+                    reason="missing_search_gate_requirement",
                 )
             )
             if len(questions) >= 5:
                 return questions
         return questions
 
-    # --- Mid phase: intake questions ---
-    for question in intake_questions:
-        if not isinstance(question, dict):
+    # --- Mid/late phase: all attributes, search_gate first ---
+    ordered = sorted(attributes, key=lambda a: (not a.get("search_gate", False), a.get("name", "")))
+    for attribute in ordered:
+        attr_name = str(attribute.get("name", "")).strip()
+        attr_key = canonical_attribute_key(attr_name, attributes, category_context)
+        if not should_queue_attribute(attr_key, known, queued_keys):
             continue
-        attribute_name = str(question.get("maps_to_attribute", "")).strip()
-        attribute_key = canonical_attribute_key(attribute_name, attributes, category_context)
-        if not should_queue_attribute(attribute_name, known, queued_names, attributes, category_context):
-            continue
-        queued_names.add(attribute_key)
+        queued_keys.add(attr_key)
+        question_text = attribute.get("clarifying_question") or f"What matters to you about {attr_name}?"
+        priority = "high" if attribute.get("search_gate") else "medium"
         questions.append(
             FollowUpQuestion(
-                question=str(question.get("question", f"What do you need for {attribute_name}?")),
-                mapsToAttribute=attribute_name,
-                priority=str(question.get("priority", "medium")),
-                reason="missing_intake_attribute",
+                question=question_text,
+                mapsToAttribute=attr_name,
+                priority=priority,
+                reason="missing_search_gate_requirement" if attribute.get("search_gate") else "missing_attribute",
             )
         )
-        if len(questions) >= 5:
-            return questions
-
-    # --- Late phase: decision-axis tradeoffs ---
-    for question in decision_axis_questions(category_context, attributes, known):
-        attribute_name = question.mapsToAttribute
-        attribute_key = canonical_attribute_key(attribute_name, attributes, category_context)
-        if not should_queue_attribute(attribute_name, known, queued_names, attributes, category_context):
-            continue
-        queued_names.add(attribute_key)
-        questions.append(question)
         if len(questions) >= 5:
             return questions
 
@@ -116,22 +103,23 @@ def build_follow_up_questions(
 # Attribute selection helpers
 # ---------------------------------------------------------------------------
 
-def critical_attributes(attributes: list[dict]) -> list[dict]:
-    """Return critical attributes; fall back to high-importance must-have/lower-is-better."""
-    critical = [
-        a for a in attributes
-        if a.get("importance") == "critical" and a.get("comparison_relevant", True)
-    ]
-    if critical:
-        return critical
+def search_gate_attributes(attributes: list[dict]) -> list[dict]:
+    """Return attributes with search_gate=True.
+
+    Falls back to attributes with score_direction must_have or lower_is_better
+    if no explicit search_gate attributes are present (e.g. local fallback schema).
+    """
+    gated = [a for a in attributes if a.get("search_gate")]
+    if gated:
+        return gated
     return [
         a for a in attributes
-        if (
-            a.get("importance") == "high"
-            and a.get("comparison_relevant", True)
-            and str(a.get("score_direction", "")) in {"must_have", "lower_is_better"}
-        )
-    ]
+        if str(a.get("score_direction", "")) in {"must_have", "lower_is_better"}
+    ][:3]
+
+
+# Keep old name as alias so any code that calls critical_attributes still works.
+critical_attributes = search_gate_attributes
 
 
 def known_attribute_names(
@@ -139,79 +127,21 @@ def known_attribute_names(
     attributes: list[dict],
     category_context: dict | None,
 ) -> set[str]:
-    """Return canonical keys for all attributes already present in the profile."""
+    """Return canonical keys for all attributes already resolved in the profile."""
     known: set[str] = set()
     for requirement in requirements:
         if requirement.status not in {"specified", "inferred", "ignored"}:
             continue
-        for name in {requirement.attributeName, canonical_attribute(requirement.attributeName, attributes, category_context)}:
-            known.add(canonical_attribute_key(name, attributes, category_context))
+        key = canonical_attribute_key(requirement.attributeName, attributes, category_context)
+        known.add(key)
     return known
 
 
 def should_queue_attribute(
-    attribute_name: str,
+    attr_key: str,
     known: set[str],
-    queued_names: set[str],
-    attributes: list[dict] | None = None,
-    category_context: dict | None = None,
+    queued_keys: set[str],
 ) -> bool:
-    if not attribute_name:
+    if not attr_key:
         return False
-    key = (
-        canonical_attribute_key(attribute_name, attributes, category_context)
-        if attributes is not None
-        else attribute_name.lower()
-    )
-    return key not in known and key not in queued_names
-
-
-# ---------------------------------------------------------------------------
-# Decision-axis question generation
-# ---------------------------------------------------------------------------
-
-def decision_axis_questions(
-    category_context: dict | None,
-    attributes: list[dict],
-    known: set[str],
-) -> list[FollowUpQuestion]:
-    """Generate questions from decision axes for attributes not yet covered."""
-    axes = category_context.get("decision_axes", []) if category_context else []
-    if not isinstance(axes, list):
-        return []
-
-    questions: list[FollowUpQuestion] = []
-    for axis in axes:
-        if not isinstance(axis, dict):
-            continue
-        axis_text = " ".join(
-            str(axis.get(f, "")) for f in ["name", "positive_direction", "tradeoff_against"]
-        )
-        attribute = closest_schema_attribute(axis_text, attributes, category_context)
-        if attribute is None:
-            continue
-        attribute_name = str(attribute.get("name", "")).strip()
-        if not attribute_name or attribute_name.lower() in known:
-            continue
-        questions.append(
-            FollowUpQuestion(
-                question=axis_question_text(axis, attribute_name),
-                mapsToAttribute=attribute_name,
-                priority="medium",
-                reason="missing_decision_axis_tradeoff",
-            )
-        )
-
-    return questions
-
-
-def axis_question_text(axis: dict, attribute_name: str) -> str:
-    axis_name = str(axis.get("name", "")).strip()
-    positive_direction = str(axis.get("positive_direction", "")).strip()
-    tradeoff_against = str(axis.get("tradeoff_against", "")).strip()
-
-    if tradeoff_against:
-        return f"For {attribute_name}, how do you want to balance {axis_name or positive_direction} against {tradeoff_against}?"
-    if positive_direction:
-        return f"For {attribute_name}, does {positive_direction} matter for this decision?"
-    return f"What tradeoff matters most for {attribute_name}?"
+    return attr_key not in known and attr_key not in queued_keys

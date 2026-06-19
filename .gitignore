@@ -58,5 +58,7 @@ Thumbs.db
 # Development docs
 # docs/
 # examples/
-# Best-Practices.md
+Best-Practices.md
 Outputs.md
+demos/
+mockdata/

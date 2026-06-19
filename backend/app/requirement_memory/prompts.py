@@ -1,8 +1,7 @@
 """LLM prompt builders for requirement memory operations.
 
 All functions return a string suitable for passing directly to the LLM
-generate_json() interface. Prompts include a task description, category
-schema context, output shape, and examples.
+generate_json() interface.
 """
 
 import json
@@ -28,54 +27,52 @@ def build_requirement_memory_prompt(
         "categoryName": category_name,
         "latestUserMessage": latest_user_message,
         "existingUserRequirementProfile": existing_profile.model_dump(),
-        "categoryAttributeSchema": extract_attribute_schema(category_context),
+        "categoryDecisionAttributes": extract_attribute_schema(category_context),
         "categoryAttributeMatchingHints": build_attribute_matching_hints(category_context),
-        "categoryIntakeQuestions": category_context.get("intake_questions", []) if category_context else [],
-        "categoryDecisionAxes": category_context.get("decision_axes", []) if category_context else [],
-        "categoryEntityCandidates": extract_entity_candidates(category_context),
+        "categoryEntityTerms": [e["name"] for e in extract_entity_candidates(category_context)],
         "task": """
-            Interpret the user's latest message and return only requirement observations that should update durable requirement memory.
+            Interpret the user's latest message and return only requirement observations
+            that should update durable requirement memory.
 
             This is not category extraction. The category is already selected.
-            Align observations to the category attribute schema when possible.
-            Use semantic judgment for ambiguous language, indirect statements, and stakeholder needs.
-            Use categoryAttributeMatchingHints as category-specific guidance. These hints are generated from the selected
-            category schema, intake questions, decision axes, and entity candidates. They are not hardcoded examples.
+
+            categoryDecisionAttributes lists the attributes for this category. Each attribute
+            has extraction_signals — phrases users commonly say for that attribute. Use these
+            as primary signals for mapping user language to attribute names.
+
+            categoryAttributeMatchingHints provides additional phrase coverage and context
+            for each attribute (signals, key, score direction, typical values).
 
             Rules:
             - Do not summarize conversation history.
             - Return only new observations from latestUserMessage.
-            - If the latest message includes both requirement information and a clarifying question, extract the stated requirement information first.
-            - Do not create a requirement for an attribute that the user only asked a question about.
-            - Preserve existing requirements by omitting them unless the latest message adds detail, overrides them, weakens them, or says to ignore them.
-            - Use status "specified" for explicit needs and constraints.
-            - Use status "inferred" only when the user strongly implies a need without directly stating it.
-            - Use status "ignored" when the user says an attribute does not matter.
-            - Use status "conflicted" when the new message contradicts existing memory but does not clearly override it.
-            - Prefer canonical attribute names from categoryAttributeSchema.
-            - Reuse categoryAttributeSchema names whenever the user's wording is a synonym, example, entity candidate,
-              answer to an intake question, decision-axis phrase, or obvious value for that attribute.
-            - Do not overfit to one product category. Apply the same schema/entity/decision-axis matching process for TVs,
-              helmets, routers, appliances, furniture, software, and other categories.
-            - If a user mentions a concrete feature, compatibility target, certification, use context, room, activity, person,
-              or product option, map it to the closest schema attribute when the category hints support that mapping.
-            - Do not ask follow-up questions for schema attributes already answered by direct wording, entity mentions,
-              or clear contextual inference.
-            - If no schema attribute fits, use a concise buyer-facing attribute name.
+            - If the message includes both requirement info and a question, extract the
+              requirement info first; do not create a requirement for what they only asked about.
+            - Preserve existing requirements by omitting them unless the latest message
+              adds detail, overrides, weakens, or dismisses them.
+            - status: "specified" for explicit needs; "inferred" when strongly implied;
+              "ignored" when the user says it doesn't matter; "conflicted" when contradictory.
+            - Prefer attribute names from categoryDecisionAttributes.
+            - Use extraction_signals from categoryAttributeMatchingHints to map colloquial
+              language ("my wife hates the noise" → Noise Level; "works with Alexa" →
+              Smart Home Compatibility).
+            - importance is the user's expressed importance for THIS requirement, not a
+              schema-level property. Set it based on how strongly the user states the need.
             - evidence must be the shortest relevant phrase from latestUserMessage.
-            - confidence must be a number from 0 to 1.
-            - source must be "explicit_user_statement" or "inferred_from_user_statement".
-            - importance must be "critical", "high", "medium", "low", or "unknown".
-            - normalizedOperator must be one of "max", "min", "equals", "one_of", "avoid", "prefer", "match".
-            - normalizedValue should be typed for scoring: number for numeric limits, boolean for yes/no, list for one_of/avoid, or concise string.
-            - unit should be a concrete unit such as "usd", "feet", "inches", "square_feet", or null.
-            - hardness should be "hard" for strict filters/compatibility/budget caps, "soft" for preferences, or "ignore" for ignored attributes.
-            - weight should be 0.0 to 1.0 and reflect scoring influence separately from hardness.
-            - productEvidenceConfidence should be null during intake unless product evidence is already known.
-            - missingProductDataStrategy should be "exclude_if_missing", "penalize_unknown", "neutral_if_missing", or "manual_review".
-            - scoringFunction should describe how product values should be scored, such as "numeric_max", "numeric_min", "exact_match", "enum_preference_match", "semantic_preference_match", "avoid_match", or "do_not_score".
-            - needsMoreSpecification should be true when the requirement is too vague to score reliably against real product data.
-            - If needsMoreSpecification is true, specificationQuestion must ask for the missing specificity.
+            - confidence: 0 to 1.
+            - source: "explicit_user_statement" or "inferred_from_user_statement".
+            - normalizedOperator: max | min | equals | one_of | avoid | prefer | match
+            - normalizedValue: typed for scoring (number, boolean, list, or concise string).
+            - unit: concrete unit ("usd", "feet", "inches", "square_feet", "dB") or null.
+            - hardness: "hard" for strict filters/budget caps; "soft" for preferences;
+              "ignore" for ignored attributes.
+            - weight: 0.0–1.0, scoring influence separately from hardness.
+            - scoringFunction: "numeric_max", "numeric_min", "exact_match",
+              "enum_preference_match", "semantic_preference_match", "avoid_match",
+              or "do_not_score".
+            - needsMoreSpecification: true when the requirement is too vague to score.
+            - If needsMoreSpecification is true, specificationQuestion must ask for
+              the missing specificity.
         """,
         "required_output_shape": {
             "requirements": [
@@ -102,60 +99,19 @@ def build_requirement_memory_prompt(
         },
         "examples": [
             {
-                "categoryName": "Any category",
-                "categoryAttributeSchema": [{"name": "Attribute A"}, {"name": "Attribute B"}],
-                "categoryAttributeMatchingHints": [
+                "categoryDecisionAttributes": [
                     {
-                        "attributeName": "Attribute A",
-                        "phrases": ["example option", "related feature"],
-                        "questions": ["Which example option do you need?"],
-                        "entities": ["Example entity"],
-                    }
-                ],
-                "latestUserMessage": "I need the example option and do not care about Attribute B.",
-                "requirements": [
-                    {
-                        "attributeName": "Attribute A",
-                        "status": "specified",
-                        "value": "example option",
-                        "normalizedOperator": "equals",
-                        "normalizedValue": "example option",
-                        "unit": None,
-                        "importance": "high",
-                        "hardness": "soft",
-                        "weight": 0.8,
-                        "source": "explicit_user_statement",
-                        "confidence": 0.9,
-                        "productEvidenceConfidence": None,
-                        "missingProductDataStrategy": "penalize_unknown",
-                        "scoringFunction": "semantic_preference_match",
-                        "needsMoreSpecification": False,
-                        "specificationQuestion": None,
-                        "evidence": "example option",
+                        "key": "noise_level",
+                        "name": "Noise Level",
+                        "extraction_signals": ["quiet", "silent", "noisy", "loud", "sound", "hears it"],
                     },
                     {
-                        "attributeName": "Attribute B",
-                        "status": "ignored",
-                        "value": None,
-                        "normalizedOperator": "match",
-                        "normalizedValue": None,
-                        "unit": None,
-                        "importance": "low",
-                        "hardness": "ignore",
-                        "weight": 0,
-                        "source": "explicit_user_statement",
-                        "confidence": 0.95,
-                        "productEvidenceConfidence": None,
-                        "missingProductDataStrategy": "neutral_if_missing",
-                        "scoringFunction": "do_not_score",
-                        "needsMoreSpecification": False,
-                        "specificationQuestion": None,
-                        "evidence": "do not care about Attribute B",
+                        "key": "smart_home_compatibility",
+                        "name": "Smart Home Compatibility",
+                        "extraction_signals": ["alexa", "google home", "homekit", "smart", "voice control"],
                     },
                 ],
-            },
-            {
-                "latestUserMessage": "My wife hates noisy ones.",
+                "latestUserMessage": "My wife hates when she can hear it running, and it needs to work with Alexa.",
                 "requirements": [
                     {
                         "attributeName": "Noise Level",
@@ -174,8 +130,27 @@ def build_requirement_memory_prompt(
                         "scoringFunction": "semantic_preference_match",
                         "needsMoreSpecification": False,
                         "specificationQuestion": None,
-                        "evidence": "hates noisy ones",
-                    }
+                        "evidence": "hates when she can hear it running",
+                    },
+                    {
+                        "attributeName": "Smart Home Compatibility",
+                        "status": "specified",
+                        "value": "Alexa",
+                        "normalizedOperator": "equals",
+                        "normalizedValue": "Alexa",
+                        "unit": None,
+                        "importance": "high",
+                        "hardness": "hard",
+                        "weight": 0.85,
+                        "source": "explicit_user_statement",
+                        "confidence": 0.97,
+                        "productEvidenceConfidence": None,
+                        "missingProductDataStrategy": "exclude_if_missing",
+                        "scoringFunction": "exact_match",
+                        "needsMoreSpecification": False,
+                        "specificationQuestion": None,
+                        "evidence": "needs to work with Alexa",
+                    },
                 ],
             },
             {
@@ -226,14 +201,14 @@ def build_clarifying_answer_prompt(
         "categoryName": category_name,
         "latestUserMessage": latest_user_message,
         "matchedAttribute": matched_attribute,
-        "categoryAttributeSchema": extract_attribute_schema(category_context),
-        "categoryEntityCandidates": extract_entity_candidates(category_context),
-        "categoryIntakeQuestions": category_context.get("intake_questions", []) if category_context else [],
+        "categoryDecisionAttributes": extract_attribute_schema(category_context),
+        "categoryEntityTerms": [e["name"] for e in extract_entity_candidates(category_context)],
         "task": """
             Answer the user's question about a category decision attribute.
 
-            Keep the answer concise and practical. Explain the common options and when each option matters.
-            Use categoryEntityCandidates as supporting context for known options, product types, features, risks, and category concepts.
+            Keep the answer concise and practical. Explain the common options and when each
+            matters. Use the attribute's typical_values and assessment_note as guidance.
+            Use categoryEntityTerms as supporting context for known options and product types.
             Do not choose for the user unless their needs clearly imply a default.
             Do not update requirement memory in this response.
             End by asking for the user's preference only if the attribute is decision-relevant.

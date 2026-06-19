@@ -109,8 +109,7 @@ class CategoryIntelligenceRequest(BaseModel):
 
 class CategoryIntelligenceResponse(BaseModel):
     category: str
-    raw_intelligence: dict
-    normalized_intelligence: dict
+    category_schema: dict
     cached: bool
 
 

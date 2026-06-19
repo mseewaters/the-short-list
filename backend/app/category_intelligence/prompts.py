@@ -1,203 +1,146 @@
 import json
 
 
-def build_category_intelligence_prompt(category: str, context: str | None = None) -> str:
+def build_category_schema_prompt(category: str, context: str | None = None) -> str:
     payload = {
+        "schema_task": "category_schema",
         "category": category,
-        "context": context or "",
+        "context": context or "general consumer purchase",
         "task": """
-            You are building concise category intelligence for a consumer decision support app.
+            Build a CategorySchema for a consumer decision support app.
 
-            Your job is not to list everything about the category.
-            Your job is to identify the small set of decision-relevant factors that most buyers would actually use to compare options.
+            Your output serves TWO purposes:
+            1. Guiding a conversation to understand what the user needs
+            2. Scoring real products against those needs
 
-            Focus on the 5-15 main attributes that drive product choice.
+            For each decision_attribute:
 
-            Definitions:
-            - important_attributes: the core product attributes a buyer would compare across options.
-            - key_decision_factors: user-facing buying criteria, often derived from attributes.
-            - comparison_dimensions: tradeoff axes buyers use to choose between good options.
-            - common_entities: reusable product/category concepts, not brand names unless the category is brand-defined.
-            - risks_or_gotchas: practical issues that could cause a bad purchase.
-            - clarifying_questions: questions that map directly to important_attributes.
+            key:
+              Stable snake_case identifier. Generate from name (e.g. "Noise Level" -> "noise_level").
+
+            name:
+              Human-readable display name (title case).
+
+            search_gate:
+              true ONLY for 2-4 attributes where a product recommendation is meaningless
+              without knowing the user's answer — even if the answer is "I don't care."
+              Budget is always search_gate: true. Room size for fans is search_gate: true.
+              Smart-home ecosystem is NOT search_gate (we can show products before knowing).
+
+            value_type:
+              number   — a single numeric value (price, dB, sq ft)
+              enum     — one of a fixed option set
+              boolean  — yes/no, has/doesn't have
+              range    — a numeric interval (e.g. coverage area)
+              string   — free text when nothing else fits
+
+            unit:
+              A concrete unit when value_type is number or range ("usd", "dB", "inches",
+              "sq_ft", "watts"). null for everything else.
+
+            score_direction:
+              higher_is_better  — more is better (coverage, brightness, airflow)
+              lower_is_better   — less is better (noise, price, weight)
+              match_preference  — match user's stated value (style, ecosystem, color)
+              must_have         — binary; product either qualifies or doesn't
+
+            typical_values:
+              enum   → the realistic option list, e.g. ["Alexa", "Google Home", "None needed"]
+              number → [realistic_min, realistic_max], e.g. [30, 65]
+              range  → same as number
+              boolean/string → null
+
+            clarifying_question:
+              The exact question to ask the user — a complete sentence.
+
+            extraction_signals:
+              6-12 phrases or words users commonly say when expressing a preference for this
+              attribute. Think colloquially: "my wife hates the noise", "works with Alexa",
+              "it's a big living room". Include synonyms, slang, and typical user phrasing.
+
+            assessment_note:
+              One sentence: how to score a product against this attribute.
+
+            entity_terms:
+              5-10 product-type terms users might name by word — subcategories, form factors,
+              technologies. NOT brands. E.g. for ceiling fans: "low profile", "hugger",
+              "flush mount", "smart fan", "damp-rated".
+
+            risks:
+              3-5 practical purchase gotchas that catch buyers off guard.
 
             Rules:
-            - Keep every list concise.
-            - Do not include brands as common_entities.
-            - Do not include every possible feature.
-            - Do not split one idea into many near-duplicates.
-            - Do not include subjective filler like "style" or "aesthetics" unless it is a primary decision driver for the category.
-            - Do not include room, user, or context-specific items unless the provided context makes them central.
-            - Prefer decision-making attributes over technical trivia.
-            - Prefer attributes that can be used later for filtering, scoring, or comparison.
-            - Attribute names should be canonical and reusable.
-            - Avoid duplicate concepts across fields.
-            - If two attributes overlap, keep the more useful buyer-facing one.
-            - Each clarifying question must map to one important attribute.
-
-            Target list sizes:
-            - key_decision_factors: 5-8 items
-            - common_entities: 3-8 items
-            - important_attributes: 5-15 items
-            - comparison_dimensions: 4-8 items
-            - risks_or_gotchas: 3-7 items
-            - good_default_recommendation_logic: 3-7 items
-            - clarifying_questions: 4-8 items
-
-            Return only valid JSON matching the required output shape.
-            Do not include markdown, commentary, or extra keys.
+            - Include Budget as an attribute (search_gate: true, value_type: number, unit: usd,
+              score_direction: lower_is_better).
+            - Keep decision_attributes to 6-12 items. Focus on what actually drives choice.
+            - Do not include brands.
+            - Do not duplicate concepts across attributes.
+            - Prefer concrete, scorable attributes over vague ones.
+            - extraction_signals must reflect actual user language, not attribute name synonyms.
+            - Return only valid JSON. No markdown, commentary, or extra keys.
         """,
         "required_output_shape": {
-            "category_summary": "string",
-            "buyer_need": "string",
-            "key_decision_factors": ["string"],
-            "common_entities": ["string"],
-            "important_attributes": ["string"],
-            "comparison_dimensions": ["string"],
-            "risks_or_gotchas": ["string"],
-            "good_default_recommendation_logic": ["string"],
-            "clarifying_questions": ["string"],
+            "category": "string",
+            "summary": "one-sentence buyer need",
+            "decision_attributes": [
+                {
+                    "key": "snake_case_string",
+                    "name": "Display Name",
+                    "search_gate": "boolean",
+                    "value_type": "number | enum | boolean | range | string",
+                    "unit": "string or null",
+                    "score_direction": "higher_is_better | lower_is_better | match_preference | must_have",
+                    "typical_values": "list or null",
+                    "clarifying_question": "Complete sentence?",
+                    "extraction_signals": ["phrase1", "phrase2"],
+                    "assessment_note": "One sentence.",
+                }
+            ],
+            "entity_terms": ["string"],
+            "risks": ["string"],
             "confidence": "low | medium | high",
         },
-        "quality_bar": {
-            "good_output": "Concise, deduplicated, buyer-facing, decision-relevant.",
-            "bad_output": "Long feature inventory, brand list, repeated concepts, technical trivia, or generic shopping advice."
-        },
-        "example_attribute_filtering": {
-            "category": "Road Bike Helmets",
-            "good_important_attributes": [
-                "Fit",
-                "Safety certification",
-                "Rotational-impact protection",
-                "Ventilation",
-                "Weight",
-                "Aerodynamics",
-                "Retention system",
-                "Eyewear compatibility",
-                "Price"
-            ],
-            "bad_important_attributes": [
-                "Color",
-                "Hair",
-                "Accessories",
-                "Vent count",
-                "Padding thickness",
-                "Aesthetics",
-                "Value",
-                "All-day comfort",
-                "Cooling performance"
-            ],
-            "why_bad": "These are either too granular, subjective, duplicated by better attributes, or not primary decision drivers."
-        }
-    }
-
-    return (
-        "You are building category intelligence for a consumer decision support app. "
-        "Return only valid JSON matching the required output shape. "
-        "Do not include markdown, commentary, or extra keys.\n\n"
-        f"{json.dumps(payload, indent=2)}"
-    )
-
-
-def build_category_normalization_prompt(category: str, raw_intelligence: dict) -> str:
-    payload = {
-        "category": category,
-        "raw_intelligence": raw_intelligence,
-        "task": """
-            Convert raw category intelligence into a compact machine-usable normalized structure.
-
-            Use semantic judgment. Do not rely on substring matching.
-            Keep the output concise and decision-relevant.
-
-            Entity type definitions:
-            - product_type: category, subcategory, or product class.
-            - feature: product capability, component, or included mechanism.
-            - performance_metric: measurable performance outcome.
-            - installation_constraint: compatibility, fit, mounting, sizing, or setup constraint.
-            - risk: bad outcome or purchase gotcha.
-            - style: aesthetic or design family only.
-
-            Attribute guidance:
-            - attribute_schema should contain the core attributes a user or product can answer.
-            - Always include Budget as an attribute.
-            - Intake questions must map exactly to an attribute_schema name.
-            - Do not map budget questions to safety, fit, quality, or value attributes.
-            - Do not invent scoring or recommendations.
-
-            Assessment metadata:
-            - score_direction: higher_is_better, lower_is_better, match_user_preference, must_have, informational.
-            - evidence_type: spec, review, user_preference, expert_rule, mixed.
-            - quantifiable: true when the attribute can be represented as a number, range, boolean, or concrete spec.
-
-            Target list sizes:
-            - entity_candidates: 3-10 items
-            - attribute_schema: 5-15 items
-            - decision_axes: 4-8 items
-            - graph_edges: enough to connect the category, attributes, entities, axes, and risks
-            - intake_questions: 4-8 items
-
-            Return only valid JSON matching the required output shape.
-            Do not include markdown, commentary, or extra keys.
-        """,
-        "required_output_shape": {
-            "entity_candidates": [
-                {
-                    "name": "string",
-                    "type": (
-                        "product_type | feature | performance_metric | "
-                        "installation_constraint | risk | style"
-                    ),
-                    "synonyms": ["string"],
-                    "source_field": "string",
-                }
-            ],
-            "attribute_schema": [
-                {
-                    "name": "string",
-                    "value_type": "string | number | boolean | enum | range",
-                    "unit": "string or null",
-                    "importance": "high | medium | low",
-                    "user_visible": True,
-                    "comparison_relevant": True,
-                    "score_direction": (
-                        "higher_is_better | lower_is_better | match_user_preference | "
-                        "must_have | informational"
-                    ),
-                    "evidence_type": "spec | review | user_preference | expert_rule | mixed",
-                    "quantifiable": True,
-                }
-            ],
-            "decision_axes": [
-                {
-                    "name": "string",
-                    "positive_direction": "string",
-                    "tradeoff_against": "string or null",
-                    "derived_from": "string",
-                }
-            ],
-            "graph_edges": [
-                {
-                    "from": "string",
-                    "relationship": (
-                        "HAS_ENTITY | HAS_ATTRIBUTE | IMPACTS | RELATES_TO | TRADEOFF_WITH"
-                    ),
-                    "to": "string",
-                    "confidence": "low | medium | high",
-                }
-            ],
-            "intake_questions": [
-                {
-                    "question": "string",
-                    "maps_to_attribute": "must exactly match one attribute_schema.name",
-                    "priority": "high | medium | low",
-                    "answer_type": "string | number | boolean | enum | range",
-                }
-            ],
+        "examples": {
+            "ceiling_fan_noise_level": {
+                "key": "noise_level",
+                "name": "Noise Level",
+                "search_gate": False,
+                "value_type": "number",
+                "unit": "dB",
+                "score_direction": "lower_is_better",
+                "typical_values": [30, 65],
+                "clarifying_question": "Is quiet operation important — for example, bedroom or office use?",
+                "extraction_signals": [
+                    "quiet", "silent", "noisy", "loud", "can hear it", "sound",
+                    "disturbs sleep", "wife hates the noise", "peaceful",
+                ],
+                "assessment_note": "Below 40 dB is near-silent; above 55 dB is noticeable in a quiet room.",
+            },
+            "ceiling_fan_room_size": {
+                "key": "room_size",
+                "name": "Room Size",
+                "search_gate": True,
+                "value_type": "enum",
+                "unit": None,
+                "score_direction": "must_have",
+                "typical_values": [
+                    "small (under 144 sq ft)",
+                    "medium (144-225 sq ft)",
+                    "large (225-400 sq ft)",
+                    "extra large (400+ sq ft)",
+                ],
+                "clarifying_question": "How large is the room you're shopping for?",
+                "extraction_signals": [
+                    "living room", "bedroom", "large room", "small room", "open plan",
+                    "square feet", "sq ft", "big space", "tiny", "dining room",
+                ],
+                "assessment_note": "Fan blade span must match room size; undersized fans leave hot spots.",
+            },
         },
     }
 
     return (
-        "You normalize category intelligence for a consumer decision support app. "
+        "You build consumer product category schemas for a decision support app. "
         "Return only valid JSON matching the required output shape. "
         "Do not include markdown, commentary, or extra keys.\n\n"
         f"{json.dumps(payload, indent=2)}"
@@ -209,37 +152,32 @@ def build_category_extraction_prompt(user_input: str, additional_context: str | 
         "user_input": user_input,
         "additional_context": additional_context or "",
         "task": """
-            Extract the canonical reusable product or solution category, plus one broader parent category and three narrower child categories.
+            Extract the canonical reusable product or solution category, plus one broader
+            parent category and three narrower child categories.
 
             Definitions:
 
-            - proposed_category:
-            The best reusable shopping category for the user's input. It should be specific enough to support useful comparison, but broad enough to contain many competing products.
+            proposed_category:
+              The best reusable shopping category for the user's input. Specific enough to
+              support useful comparison, broad enough to contain many competing products.
 
-            - broader_category:
-            The immediate parent category one level above proposed_category. It should contain proposed_category and related sibling categories.
-            Example: "Ceiling Fans" -> "Fans"
-            Example: "Robot Vacuums" -> "Vacuum Cleaners"
-            Do not make this too broad, such as "Home Improvement" unless the input is genuinely vague.
+            broader_category:
+              The immediate parent category one level above proposed_category.
+              Example: "Ceiling Fans" -> "Fans"
+              Do not make this too broad (e.g. "Home Improvement") unless the input is vague.
 
-            - more_specific_categories:
-            Three child categories one level below proposed_category.
-            These must be narrower reusable shopping categories, not attributes, preferences, rooms, brands, features, or one-off use cases.
-            Good: "Low Profile Ceiling Fans", "Smart Ceiling Fans", "Outdoor Ceiling Fans"
-            Bad: "Quiet Ceiling Fans", "Ceiling Fans for Bedrooms", "White Ceiling Fans", "Budget Ceiling Fans"
+            more_specific_categories:
+              Three child categories one level below proposed_category.
+              Must be reusable shopping categories — not attributes, rooms, brands, or features.
+              Good: "Low Profile Ceiling Fans", "Smart Ceiling Fans", "Outdoor Ceiling Fans"
+              Bad:  "Quiet Ceiling Fans", "Ceiling Fans for Bedrooms", "Budget Ceiling Fans"
 
             Rules:
-
-            - proposed_category should be the Goldilocks level: not too broad, not too specific.
-            - broader_category should be exactly one useful level broader.
-            - more_specific_categories should be exactly one useful level narrower.
-            - Do not include room/location, budget, style, color, brand, user demographic, or performance preference unless it defines an established shopping subcategory.
-            - A more specific category must pass this test: would a retailer, review site, or buying guide plausibly have this as a category page?
-            - If the user input is too vague, return a broad proposed_category, set confidence to low, and still provide reasonable broader/more specific options.
+            - proposed_category: not too broad, not too specific.
+            - Do not include room, budget, style, color, brand, or performance preference
+              unless it defines an established shopping subcategory.
             - Return only valid JSON.
-            - Prefer concrete categories over abstract concepts.
-            - Return a singular or plural category name only. No explanations.
-            """,
+        """,
         "examples": [
             {
                 "input": "I need a quiet low-profile ceiling fan for an old house bedroom.",
@@ -248,18 +186,18 @@ def build_category_extraction_prompt(user_input: str, additional_context: str | 
                 "more_specific_categories": [
                     "Low Profile Ceiling Fans",
                     "Smart Ceiling Fans",
-                    "Outdoor Ceiling Fans"
+                    "Outdoor Ceiling Fans",
                 ],
             },
-            { 
+            {
                 "input": "I want movie theater vibes in my front room.",
                 "proposed_category": "Home Entertainment Systems",
                 "broader_category": "Home Entertainment",
                 "more_specific_categories": [
                     "Ultra Short Throw Projectors",
                     "Soundbars",
-                    "Surround Sound Systems"
-                ]
+                    "Surround Sound Systems",
+                ],
             },
             {
                 "input": "I can't hear people during Teams calls.",
@@ -268,19 +206,9 @@ def build_category_extraction_prompt(user_input: str, additional_context: str | 
                 "more_specific_categories": [
                     "Wireless Headsets",
                     "Noise-Canceling Headsets",
-                    "Office Headsets"
-                ]
+                    "Office Headsets",
+                ],
             },
-            {
-                "input": "I need something for my house.",
-                "proposed_category": "Home Improvement",
-                "broader_category": "Home",
-                "more_specific_categories": [
-                    "Home Entertainment",
-                    "Climate Control",
-                    "Home Organization"
-                ]
-            }
         ],
         "required_output_shape": {
             "proposed_category": "string",

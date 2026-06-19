@@ -13,3 +13,5 @@ Frontend: Vue
 Status: MVP for Father's Day
 
 ##  Running
+front:  npm run dev
+back: uvicorn app.main:app --reload
