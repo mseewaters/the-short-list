@@ -244,7 +244,7 @@ Good system design matters more than AI cleverness.
 
 ---
 
-# Tomorrow's Goal - Intelligence Day
+# Day 2 Goal - Intelligence Day
 
 Goal:
 
@@ -256,7 +256,7 @@ Do not replace everything at once.
 
 ---
 
-## Tomorrow's Priority Work
+## Day 2 Priority Work
 
 ### 1. Introduce Category Intelligence
 
@@ -387,3 +387,159 @@ without changing application code.
 ## Future Motto
 
 Less guesswork. Better choices.
+
+---
+
+## Day 2 - Category Intelligence Implemented
+
+Date: June 17, 2026
+
+## Goal
+
+Complete yesterday's Intelligence Day priorities:
+
+* Introduce Category Intelligence
+* Build Dynamic Category Schema
+* Add Agent Trace Visibility
+
+---
+
+## What Was Completed
+
+### 1. Category Intelligence introduced
+
+The system now performs category understanding dynamically instead of relying on hardcoded category checks.
+
+Result:
+
+Input can describe very different products, and the workflow infers category context without changing application code.
+
+---
+
+### 2. Dynamic category schema added
+
+A category intelligence layer now produces category-aware attributes used downstream by requirements and research logic.
+
+Result:
+
+Each category can carry different attribute expectations (for example, fan sizing vs TV panel characteristics) using the same orchestration path.
+
+---
+
+### 3. Agent trace visibility added
+
+Trace visibility was added so developer-facing flow execution is easier to inspect while iterating.
+
+Result:
+
+You can now see how intent, requirements, category intelligence, and response/research steps contribute to the final output.
+
+---
+
+## Success Metric Status
+
+Yesterday's success metric is met.
+
+The Short List can now move across categories (for example ceiling fan, robot vacuum, TV) without hardcoded category branching.
+
+---
+
+# Today's Goal - User Requirements Intelligence Day
+
+Goal:
+
+Make requirement extraction significantly smarter so the system captures, normalizes, and prioritizes what the user actually cares about.
+
+---
+
+## Today's Priority Work
+
+### 1. Improve requirement extraction quality
+
+Focus:
+
+Extract explicit and implied requirements from natural language with less loss.
+
+Target examples:
+
+* hard constraints (budget cap, dimensions, compatibility)
+* preference signals (quiet, premium feel, easy setup)
+* context constraints (room type, household type, usage pattern)
+
+---
+
+### 2. Add requirement normalization and confidence
+
+Focus:
+
+Normalize user language into structured requirement fields and attach confidence.
+
+Output should include:
+
+* canonical attribute name
+* normalized value/range
+* source phrase from user text
+* confidence score
+* conflict flag (if contradictory statements exist)
+
+---
+
+### 3. Strengthen clarification intelligence
+
+Focus:
+
+Ask fewer, better follow-up questions.
+
+Question selection should prioritize:
+
+* high-impact missing constraints
+* low-confidence extracted requirements
+* conflict resolution when user inputs disagree
+
+---
+
+### 4. Add requirement trace and debugging hooks
+
+Focus:
+
+Expose how each requirement was extracted and transformed to accelerate iteration.
+
+Include:
+
+* raw phrase -> normalized field mapping
+* dropped/ignored signals with reason
+* per-turn requirement deltas
+
+---
+
+## Still Forbidden
+
+No AWS
+
+No DynamoDB
+
+No Docker
+
+No Step Functions
+
+No Authentication
+
+No CI/CD
+
+No LangSmith
+
+No Terraform
+
+No basement waterproofing.
+
+---
+
+## Success Metric For Today
+
+Given messy user input, The Short List should produce a trustworthy structured requirement set, identify gaps/conflicts, and ask the minimum clarifying questions needed before research.
+
+---
+
+## Working Motto
+
+Understand the user before recommending the product.

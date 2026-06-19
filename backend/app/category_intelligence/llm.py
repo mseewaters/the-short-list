@@ -156,16 +156,25 @@ class OpenAICompatibleProvider:
         return parsed, metadata
 
 
+_provider_instance: LLMProvider | None = None
+
+
 def get_llm_provider() -> LLMProvider:
+    global _provider_instance
+    if _provider_instance is not None:
+        return _provider_instance
+
     load_local_env()
     provider = os.getenv("LLM_PROVIDER", "local").lower()
 
     if provider in {"local", "mock", "deterministic"}:
-        return LocalCategoryIntelligenceProvider()
-    if provider in {"openai", "openai-compatible"}:
-        return OpenAICompatibleProvider()
+        _provider_instance = LocalCategoryIntelligenceProvider()
+    elif provider in {"openai", "openai-compatible"}:
+        _provider_instance = OpenAICompatibleProvider()
+    else:
+        raise CategoryIntelligenceError(f"Unsupported LLM_PROVIDER: {provider}")
 
-    raise CategoryIntelligenceError(f"Unsupported LLM_PROVIDER: {provider}")
+    return _provider_instance
 
 
 def get_llm_config_metadata() -> dict:
@@ -376,8 +385,11 @@ def local_attribute(name: str, importance: str) -> dict:
     }
 
 
+_PRESERVE_CASE = {"Wi-Fi", "HEPA", "USB", "HDMI", "TV", "LED", "AC", "UHD", "4K", "8K", "OLED", "QLED"}
+
+
 def title_text(text: str) -> str:
-    return str(text).strip().capitalize()
+    return " ".join(w if w in _PRESERVE_CASE else w.capitalize() for w in str(text).strip().split())
 
 
 def local_category_extraction(data: dict) -> dict:

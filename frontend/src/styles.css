@@ -227,6 +227,21 @@ button:disabled {
   margin-bottom: 16px;
 }
 
+.trace-json {
+  max-height: 420px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  background: #f8fafc;
+  color: var(--ink);
+  font-family: Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 @media (max-width: 780px) {
   .app-shell {
     width: min(100% - 24px, 1020px);

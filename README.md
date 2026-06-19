@@ -11,3 +11,5 @@ Backend: FastAPI + LangGraph
 Frontend: Vue
 
 Status: MVP for Father's Day
+
+##  Running

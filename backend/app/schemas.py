@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -26,9 +28,49 @@ class Requirement(BaseModel):
     value: str
 
 
+class UserRequirement(BaseModel):
+    attributeName: str
+    status: str
+    value: str | int | float | bool | None = None
+    normalizedOperator: str = "match"
+    normalizedValue: Any = None
+    unit: str | None = None
+    importance: str
+    hardness: str = "soft"
+    weight: float = 0.5
+    source: str
+    confidence: float
+    productEvidenceConfidence: float | None = None
+    missingProductDataStrategy: str = "penalize_unknown"
+    scoringFunction: str = "match_user_preference"
+    needsMoreSpecification: bool = False
+    specificationQuestion: str | None = None
+    evidence: str
+    updatedAt: str
+
+
+class FollowUpQuestion(BaseModel):
+    question: str
+    mapsToAttribute: str
+    priority: str
+    reason: str
+
+
+class UserRequirementProfile(BaseModel):
+    categoryName: str | None = None
+    originalUserPrompt: str
+    latestUserMessage: str
+    requirements: list[UserRequirement] = Field(default_factory=list)
+    followUpQuestions: list[FollowUpQuestion] = Field(default_factory=list)
+    summary: str
+    createdAt: str
+    updatedAt: str
+
+
 class ClarifyResponse(BaseModel):
     category: str | None
     requirements: list[Requirement] = Field(default_factory=list)
+    user_requirement_profile: UserRequirementProfile | None = None
     missing_fields: list[str] = Field(default_factory=list)
     agent_trace: list[str] = Field(default_factory=list)
     agent_message: str
@@ -85,4 +127,3 @@ class CategoryExtractResponse(BaseModel):
     confidence: str
     explanation: str
     matched_existing_category: bool
-    prompt: str

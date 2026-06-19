@@ -1,21 +1,25 @@
+"""Response agent: generates the agent's reply for the current conversation turn."""
+
+from app.agents.prompts import build_response_message
 from app.state import shortlistState
 
 
 def response_agent(state: shortlistState) -> shortlistState:
-    category = state.get("category")
-    raw_requirements = state.get("raw_requirements", {})
-    missing_fields = state.get("missing_fields", [])
+    follow_up_questions = (
+        (state.get("user_requirement_profile") or {}).get("followUpQuestions", [])
+        if isinstance(state.get("user_requirement_profile"), dict)
+        else []
+    )
 
-    if state.get("ready_to_search"):
-        agent_message = (
-            f"I think I have enough to start. I am hearing {category}, with "
-            f"{len(raw_requirements)} requirements to review."
-        )
-    elif missing_fields:
-        field_list = ", ".join(missing_fields)
-        agent_message = f"Got it. I still need a little more detail about: {field_list}."
-    else:
-        agent_message = "Got it. Tell me one or two things that matter most for this decision."
+    agent_message = build_response_message(
+        category=state.get("category"),
+        raw_requirements=state.get("raw_requirements", {}),
+        missing_fields=state.get("missing_fields", []),
+        clarifying_answer=state.get("clarifying_answer"),
+        follow_up_questions=follow_up_questions,
+        prompt_count=state.get("clarification_prompt_count", 0),
+        ready_to_search=state.get("ready_to_search", False),
+    )
 
     return {
         **state,

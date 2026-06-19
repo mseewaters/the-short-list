@@ -26,6 +26,7 @@ const error = ref("");
 const requirements = computed(() => clarifyResult.value?.requirements || []);
 const missingFields = computed(() => clarifyResult.value?.missing_fields || []);
 const agentTrace = computed(() => clarifyResult.value?.agent_trace || []);
+const userRequirementProfile = computed(() => clarifyResult.value?.user_requirement_profile || null);
 const rawIntelligence = computed(() => categoryIntelligence.value?.raw_intelligence || null);
 const normalizedIntelligence = computed(() => categoryIntelligence.value?.normalized_intelligence || null);
 const visibleKeyDecisionFactors = computed(() => rawIntelligence.value?.key_decision_factors?.slice(0, 8) || []);
@@ -34,6 +35,55 @@ const visibleAttributeSchema = computed(() => normalizedIntelligence.value?.attr
 const visibleDecisionAxes = computed(() => normalizedIntelligence.value?.decision_axes?.slice(0, 6) || []);
 const visibleRisks = computed(() => rawIntelligence.value?.risks_or_gotchas?.slice(0, 5) || []);
 const visibleIntakeQuestions = computed(() => normalizedIntelligence.value?.intake_questions?.slice(0, 6) || []);
+const requirementScoringPreview = computed(() => {
+  const profile = userRequirementProfile.value;
+  const attributes = normalizedIntelligence.value?.attribute_schema || [];
+  const attributeByName = new Map(
+    attributes.map((attribute) => [attribute.name?.toLowerCase(), attribute]),
+  );
+
+  if (!profile?.requirements?.length) {
+    return null;
+  }
+
+  return {
+    categoryName: profile.categoryName,
+    readyToResearch: Boolean(clarifyResult.value?.ready_to_search),
+    scoringInputs: profile.requirements.map((requirement) => {
+      const attribute = attributeByName.get(requirement.attributeName?.toLowerCase()) || {};
+      return {
+        attributeName: requirement.attributeName,
+        requirementStatus: requirement.status,
+        userValue: requirement.value,
+        userImportance: requirement.importance,
+        source: requirement.source,
+        confidence: requirement.confidence,
+        normalizedOperator: requirement.normalizedOperator,
+        normalizedValue: requirement.normalizedValue,
+        unit: requirement.unit || attribute.unit || null,
+        hardness: requirement.hardness,
+        weight: requirement.weight,
+        productEvidenceConfidence: requirement.productEvidenceConfidence,
+        missingProductDataStrategy: requirement.missingProductDataStrategy,
+        scoringFunction: requirement.scoringFunction,
+        needsMoreSpecification: requirement.needsMoreSpecification,
+        specificationQuestion: requirement.specificationQuestion,
+        evidence: requirement.evidence,
+        productAttributeExpected: attribute.name || requirement.attributeName,
+        productValueType: attribute.value_type || "unknown",
+        scoreDirection: attribute.score_direction || "match_user_preference",
+        evidenceTypeNeeded: attribute.evidence_type || "mixed",
+        quantifiable: Boolean(attribute.quantifiable),
+        scoringUse: scoringUseFor(requirement, attribute),
+      };
+    }),
+  };
+});
+const requirementScoringPreviewJson = computed(() => (
+  requirementScoringPreview.value
+    ? JSON.stringify(requirementScoringPreview.value, null, 2)
+    : ""
+));
 const stages = [
   { key: "category", label: "Category" },
   { key: "understand", label: "Understand" },
@@ -235,6 +285,31 @@ async function loadLlmConfig() {
   }
 }
 
+function scoringUseFor(requirement, attribute) {
+  if (requirement.scoringFunction) {
+    return requirement.scoringFunction;
+  }
+  if (requirement.status === "ignored") {
+    return "do_not_score";
+  }
+  if (requirement.status === "conflicted") {
+    return "needs_resolution_before_scoring";
+  }
+  if (attribute.score_direction === "must_have" || requirement.importance === "critical") {
+    return "filter_or_heavy_penalty_if_unmet";
+  }
+  if (attribute.score_direction === "lower_is_better") {
+    return "score_lower_product_value_better_against_user_limit_or_preference";
+  }
+  if (attribute.score_direction === "higher_is_better") {
+    return "score_higher_product_value_better_against_user_threshold_or_preference";
+  }
+  if (attribute.score_direction === "informational") {
+    return "show_as_context_do_not_rank_heavily";
+  }
+  return "score_match_to_user_preference";
+}
+
 function canOpenStage(stageKey) {
   if (stageKey === "category") {
     return true;
@@ -302,9 +377,6 @@ onMounted(async () => {
         <p v-if="error" class="error">{{ error }}</p>
 
         <section v-if="categoryProposal" class="results-panel">
-          <h2>Extraction Prompt</h2>
-          <pre>{{ categoryProposal.prompt }}</pre>
-
           <h2>Select the desired category:</h2>
           <p>Key: {{ categoryProposal.normalized_category_key }}</p>
           <p>Confidence: {{ categoryProposal.confidence }}</p>
@@ -498,6 +570,11 @@ onMounted(async () => {
             <p v-for="trace in agentTrace" :key="trace">{{ trace }}</p>
           </div>
           <p v-else class="empty-message">No trace yet.</p>
+
+          <section v-if="requirementScoringPreview">
+            <h2>User Attribute Scoring JSON</h2>
+            <pre class="trace-json">{{ requirementScoringPreviewJson }}</pre>
+          </section>
         </aside>
       </div>
     </section>
